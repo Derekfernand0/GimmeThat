@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
-  // Aquí inicializaremos Firebase más adelante
+// Importamos el Guardia (Auth Gate) en lugar del LoginScreen
+import 'features/auth/presentation/auth_gate.dart';
+import 'core/theme/app_theme.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
@@ -14,14 +20,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Task Manager App',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      // Por ahora, mostraremos una pantalla temporal
-      home: const Scaffold(
-        body: Center(child: Text('¡App configurada correctamente!')),
-      ),
+      theme: AppTheme.lightTheme,
+      // El guardia toma el control desde que abres la app
+      home: const AuthGate(),
     );
   }
 }

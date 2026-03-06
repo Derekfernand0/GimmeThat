@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "805846412469",
+    "project_id": "gimmethat-7f8cb",
+    "storage_bucket": "gimmethat-7f8cb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:805846412469:android:2a00a7aa5ee22660b4e2fc",
+        "android_client_info": {
+          "package_name": "com.example.gimmethat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDMRvkywIuW2CEzAY6fOH1BJ4qNUd8VSgI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
