@@ -11,50 +11,46 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Conectamos nuestro servicio de Firebase
   final AuthService _authService = AuthService();
 
-  // Controladores para leer lo que el usuario escribe en las cajas de texto
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
 
-  // Variables para controlar el estado de la pantalla
-  bool _isLogin = true; // ¿Estamos en modo Login o Registro?
-  bool _isLoading = false; // ¿Está cargando (conectándose a internet)?
+  bool _isLogin = true;
+  bool _isLoading = false;
 
-  // Función que se ejecuta al presionar el botón principal
   void _submit() async {
     setState(() {
-      _isLoading = true; // Mostramos la ruedita de carga
+      _isLoading = true;
     });
 
     try {
       if (_isLogin) {
-        // Modo: Iniciar sesión
+        // CORREGIDO: Se agregó el "And" -> signInWithEmailAndPassword
         await _authService.signInWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
       } else {
-        // Modo: Registro
         await _authService.registerWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text.trim(),
           _usernameController.text.trim(),
         );
       }
-      // Nota: Si el login es exitoso, luego haremos que pase a otra pantalla.
-      // Por ahora, si todo sale bien, simplemente dejará de cargar.
     } catch (e) {
-      // Si hay error (contraseña corta, correo inválido), mostramos un mensaje
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     } finally {
-      setState(() {
-        _isLoading = false; // Ocultamos la ruedita de carga
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -68,12 +64,9 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Aquí irá tu ilustración de la pony/mariposa en el futuro
-                // AQUÍ VA TU NUEVO LOGO:
                 Image.asset(
                   'lib/assets/images/logo_transparent.png',
-                  height:
-                      150, // Puedes ajustar este número para hacerlo más grande o pequeño
+                  height: 150,
                 ),
                 const SizedBox(height: 40),
 
@@ -135,7 +128,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _submit,
                     child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.brown)
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.brown,
+                              strokeWidth: 2,
+                            ),
+                          )
                         : Text(
                             _isLogin ? 'Entrar al jardín' : 'Crear mi espacio',
                           ),

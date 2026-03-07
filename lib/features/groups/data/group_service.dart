@@ -125,4 +125,21 @@ class GroupService {
       'roles.$targetUid': FieldValue.delete(), // Borramos su rol
     });
   }
+
+  // 8. BORRAR SALA (Solo para el Host)
+  Future<void> deleteGroup(String groupId) async {
+    // a. Primero buscamos todas las tareas que pertenecen a esta sala
+    final tasksQuery = await _firestore
+        .collection('tasks')
+        .where('groupId', isEqualTo: groupId)
+        .get();
+
+    // b. Borramos cada tarea encontrada
+    for (var doc in tasksQuery.docs) {
+      await doc.reference.delete();
+    }
+
+    // c. Finalmente borramos el documento de la sala
+    await _firestore.collection('groups').doc(groupId).delete();
+  }
 }

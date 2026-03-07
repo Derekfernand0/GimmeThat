@@ -105,6 +105,22 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     setState(() => _isMentioning = false);
   }
 
+  // Función para convertir los IDs en nombres legibles 🦋
+  String _getCompletedNames() {
+    if (widget.task.completedBy.isEmpty) return 'Nadie aún 🌱';
+
+    List<String> names = [];
+    for (var uid in widget.task.completedBy) {
+      // Buscamos al usuario en nuestra lista de miembros del grupo
+      final member = _groupMembers.firstWhere(
+        (m) => m['uid'] == uid,
+        orElse: () => {'username': 'Usuario'},
+      );
+      names.add(member['username']);
+    }
+    return names.join(', ');
+  }
+
   // Esta función es la que pinta los @nombres de color azul
   Widget _buildCommentText(String text) {
     final words = text.split(' ');
@@ -239,7 +255,29 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.stars,
+                        size: 18,
+                        color: Color(0xFFFFF59D),
+                      ), // Estrellita amarilla
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Completada por: ${_getCompletedNames()}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey.shade700,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   if (widget.task.description.isNotEmpty) ...[
                     Container(
                       width: double.infinity,

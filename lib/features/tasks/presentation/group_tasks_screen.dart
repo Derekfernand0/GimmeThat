@@ -8,6 +8,7 @@ import '../domain/task_model.dart';
 import 'create_task_screen.dart';
 import 'task_details_screen.dart';
 import '../../groups/presentation/group_members_screen.dart';
+import '../../groups/data/group_service.dart';
 
 // ¡CAMBIO 1: Ahora es un StatefulWidget!
 class GroupTasksScreen extends StatefulWidget {
@@ -22,6 +23,7 @@ class GroupTasksScreen extends StatefulWidget {
 class _GroupTasksScreenState extends State<GroupTasksScreen> {
   final TaskService _taskService = TaskService();
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+  final GroupService _groupService = GroupService();
 
   // ¡NUEVAS VARIABLES PARA EL BUSCADOR Y FILTROS! 🦋
   String _searchQuery = '';
@@ -36,6 +38,45 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
     if (difference < 0) return const Color(0xFFEF9A9A); // Rojo
     if (difference <= 1) return const Color(0xFFFFCC80); // Naranja
     return const Color(0xFFA5D6A7); // Verde
+  }
+
+  // Función para confirmar la eliminación
+  void _confirmDeleteGroup(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFFFFFDF7),
+        title: const Text(
+          '¿Eliminar esta sala? ⚠️',
+          style: TextStyle(color: Color(0xFF5D4037)),
+        ),
+        content: const Text(
+          'Esta acción es permanente. Se borrarán todas las tareas, fotos y comentarios de este grupo.',
+          style: TextStyle(color: Colors.grey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              // 1. Cerramos el diálogo
+              Navigator.pop(context);
+              // 2. Ejecutamos el borrado
+              await _groupService.deleteGroup(widget.group.id);
+              // 3. Regresamos a la pantalla de Mis Grupos
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text(
+              'Eliminar Todo',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -56,34 +97,35 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
           elevation: 0,
           iconTheme: const IconThemeData(color: Color(0xFF5D4037)),
           actions: [
-            // ¡NUEVO BOTÓN DE CALENDARIO! 📅
+            // Botón de Calendario
             IconButton(
-              icon: const Icon(
-                Icons.calendar_month,
-                color: Color(0xFFC8E6C9),
-              ), // Verde suave
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CalendarScreen(group: widget.group),
-                  ),
-                );
-              },
+              icon: const Icon(Icons.calendar_month, color: Color(0xFFC8E6C9)),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CalendarScreen(group: widget.group),
+                ),
+              ),
             ),
-            // Botón de participantes que ya teníamos
+            // Botón de Participantes
             IconButton(
               icon: const Icon(Icons.people_alt, color: Color(0xFFF8BBD0)),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        GroupMembersScreen(group: widget.group),
-                  ),
-                );
-              },
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => GroupMembersScreen(group: widget.group),
+                ),
+              ),
             ),
+
+            // ¡BOTÓN MÁGICO DE BORRAR SALA! 🗑️
+            // Solo se muestra si eres el 'host'
+            if (widget.group.roles[currentUserId] == 'host')
+              IconButton(
+                icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                onPressed: () => _confirmDeleteGroup(context),
+                tooltip: 'Eliminar esta sala',
+              ),
           ],
           bottom: const TabBar(
             labelColor: Color(0xFF5D4037),
