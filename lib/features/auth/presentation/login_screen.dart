@@ -69,25 +69,11 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Aquí irá tu ilustración de la pony/mariposa en el futuro
-                Container(
-                  height: 150,
-                  width: 150,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.pink.withOpacity(0.1),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.favorite,
-                    size: 60,
-                    color: Color(0xFFF8BBD0),
-                  ),
+                // AQUÍ VA TU NUEVO LOGO:
+                Image.asset(
+                  'lib/assets/images/logo_transparent.png',
+                  height:
+                      150, // Puedes ajustar este número para hacerlo más grande o pequeño
                 ),
                 const SizedBox(height: 40),
 

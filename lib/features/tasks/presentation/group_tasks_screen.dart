@@ -1,5 +1,5 @@
 // lib/features/tasks/presentation/group_tasks_screen.dart
-
+import 'calendar_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../groups/domain/group_model.dart';
@@ -56,6 +56,22 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
           elevation: 0,
           iconTheme: const IconThemeData(color: Color(0xFF5D4037)),
           actions: [
+            // ¡NUEVO BOTÓN DE CALENDARIO! 📅
+            IconButton(
+              icon: const Icon(
+                Icons.calendar_month,
+                color: Color(0xFFC8E6C9),
+              ), // Verde suave
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CalendarScreen(group: widget.group),
+                  ),
+                );
+              },
+            ),
+            // Botón de participantes que ya teníamos
             IconButton(
               icon: const Icon(Icons.people_alt, color: Color(0xFFF8BBD0)),
               onPressed: () {
@@ -271,7 +287,11 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.search_off, size: 80, color: Color(0xFFF8BBD0)),
+            // REEMPLAZA EL ICONO POR ESTO:
+            Image.asset(
+              'lib/assets/images/empty_tasks.png',
+              height: 150, // Ajusta el tamaño como prefieras
+            ),
             const SizedBox(height: 20),
             Text(
               emptyMessage,
