@@ -444,21 +444,63 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                           ),
                       itemCount: _currentImages.length,
                       itemBuilder: (context, index) {
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(15),
-                          child: Image.network(
-                            _currentImages[index],
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, p) => p == null
-                                ? child
-                                : Container(
-                                    color: Colors.grey.shade100,
-                                    child: const Center(
-                                      child: CircularProgressIndicator(
-                                        color: Color(0xFFF8BBD0),
+                        final imageUrl = _currentImages[index];
+                        return GestureDetector(
+                          onTap: () {
+                            // AQUÍ ESTÁ LA MAGIA PARA AGRANDAR LA IMAGEN 🌸
+                            showDialog(
+                              context: context,
+                              builder: (context) => Dialog(
+                                backgroundColor: Colors.transparent,
+                                insetPadding: EdgeInsets.zero,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    InteractiveViewer(
+                                      panEnabled: true,
+                                      minScale: 0.5,
+                                      maxScale: 4.0,
+                                      child: Image.network(
+                                        imageUrl,
+                                        fit: BoxFit.contain,
+                                        width: double.infinity,
+                                        height: double.infinity,
                                       ),
                                     ),
-                                  ),
+                                    Positioned(
+                                      top: 40,
+                                      right: 20,
+                                      child: IconButton(
+                                        icon: const Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: 30,
+                                        ),
+                                        onPressed: () => Navigator.pop(context),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                          // Así se ve la imagen pequeñita en la cuadrícula
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(15),
+                            child: Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, p) => p == null
+                                  ? child
+                                  : Container(
+                                      color: Colors.grey.shade100,
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                          color: Color(0xFFF8BBD0),
+                                        ),
+                                      ),
+                                    ),
+                            ),
                           ),
                         );
                       },

@@ -8,6 +8,7 @@ import '../domain/group_model.dart';
 import '../../auth/data/auth_service.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../tasks/presentation/group_tasks_screen.dart';
+import '../../notifications/presentation/notification_settings_screen.dart';
 
 class GroupsScreen extends StatefulWidget {
   const GroupsScreen({super.key});
@@ -227,6 +228,21 @@ class _GroupsScreenState extends State<GroupsScreen>
               );
             },
           ),
+
+          // --- NUEVO: BOTÓN DE AJUSTES DE NOTIFICACIONES ⚙️ ---
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.grey),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationSettingsScreen(),
+                ),
+              );
+            },
+          ),
+
+          // --- BOTÓN DE SALIR ---
           IconButton(
             icon: const Icon(Icons.logout, color: Color(0xFF5D4037)),
             onPressed: () async => await _authService.signOut(),
