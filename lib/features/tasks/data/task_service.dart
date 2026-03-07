@@ -52,13 +52,18 @@ class TaskService {
     await _firestore.collection('tasks').doc(taskId).update(fieldsToUpdate);
   }
 
-  // 5. NUEVO: Enviar un comentario
-  Future<void> addComment(String taskId, String userId, String text) async {
-    // Primero, buscamos tu nombre de usuario en la base de datos
+  // 5. NUEVO: Enviar un comentario Y detectar menciones
+  Future<void> addComment(
+    String taskId,
+    String userId,
+    String text,
+    List<String> mentionedUsernames,
+  ) async {
+    // Primero, buscamos tu nombre de usuario
     final userDoc = await _firestore.collection('users').doc(userId).get();
     final username = userDoc.data()?['username'] ?? 'Usuario';
 
-    // Guardamos el comentario dentro de una "sub-carpeta" en esta tarea específica
+    // Guardamos el comentario normalmente
     await _firestore
         .collection('tasks')
         .doc(taskId)
@@ -69,6 +74,39 @@ class TaskService {
           'text': text,
           'createdAt': FieldValue.serverTimestamp(),
         });
+
+    // ¡LA MAGIA DE LAS MENCIONES! 🦋
+    // Por cada usuario que mencionaste, le dejamos una notificación en su perfil
+    for (String mentionedName in mentionedUsernames) {
+      // Buscamos cuál es el ID real de este usuario usando su nombre
+      final userQuery = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: mentionedName)
+          .get();
+
+      if (userQuery.docs.isNotEmpty) {
+        final targetUserId = userQuery.docs.first.id;
+
+        // Verificamos que no te estés mencionando a ti mismo
+        if (targetUserId != userId) {
+          await _firestore
+              .collection('users')
+              .doc(targetUserId)
+              .collection('notifications')
+              .add({
+                'type': 'mention',
+                'title': '¡Alguien te mencionó!',
+                'message': '$username te ha mencionado en un comentario.',
+                'taskId': taskId,
+                'createdAt': FieldValue.serverTimestamp(),
+                'isRead': false, // Para saber si ya la vio o no
+              });
+          print(
+            '✅ Notificación guardada en la base de datos para $mentionedName',
+          );
+        }
+      }
+    }
   }
 
   // 6. NUEVO: Escuchar los comentarios en tiempo real

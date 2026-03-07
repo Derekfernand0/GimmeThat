@@ -12,12 +12,11 @@ class TaskModel {
   final bool isCompleted;
   final String createdBy;
 
-  // ¡Nuevos campos mágicos!
-  final List<Map<String, dynamic>>
-  subtasks; // Para los checklists: {title: '...', isDone: false}
-  final List<String> tags; // Etiquetas ej. ['Ciencias', 'Urgente']
-  final List<String>
-  completedBy; // Aquí guardaremos los IDs de los usuarios que la terminen
+  final List<Map<String, dynamic>> subtasks;
+  final List<String> tags;
+  final List<String> completedBy;
+  // ¡NUEVO CAMPO PARA LAS FOTOS! 📸
+  final List<String> imageUrls;
 
   TaskModel({
     required this.id,
@@ -28,9 +27,10 @@ class TaskModel {
     required this.priority,
     this.isCompleted = false,
     required this.createdBy,
-    this.subtasks = const [], // Vacío por defecto al crearla
+    this.subtasks = const [],
     this.tags = const [],
     this.completedBy = const [],
+    this.imageUrls = const [], // Vacío por defecto al crearla
   });
 
   factory TaskModel.fromMap(Map<String, dynamic> map, String documentId) {
@@ -44,10 +44,11 @@ class TaskModel {
       isCompleted: map['isCompleted'] ?? false,
       createdBy: map['createdBy'] ?? '',
 
-      // Transformamos las listas de Firebase a Listas de Flutter
       subtasks: List<Map<String, dynamic>>.from(map['subtasks'] ?? []),
       tags: List<String>.from(map['tags'] ?? []),
       completedBy: List<String>.from(map['completedBy'] ?? []),
+      // Leemos las fotos de Firebase
+      imageUrls: List<String>.from(map['imageUrls'] ?? []),
     );
   }
 
@@ -63,6 +64,7 @@ class TaskModel {
       'subtasks': subtasks,
       'tags': tags,
       'completedBy': completedBy,
+      'imageUrls': imageUrls, // Guardamos las fotos en Firebase
       'createdAt': FieldValue.serverTimestamp(),
     };
   }

@@ -90,4 +90,39 @@ class GroupService {
               .toList();
         });
   }
+
+  // 5. NUEVO: Obtener los perfiles (nombres) de los miembros del grupo
+  Future<List<Map<String, dynamic>>> getGroupMembersDetails(
+    List<String> memberUids,
+  ) async {
+    List<Map<String, dynamic>> membersData = [];
+    // Buscamos el perfil de cada usuario en la base de datos
+    for (String uid in memberUids) {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (doc.exists) {
+        membersData.add({'uid': uid, ...doc.data()!});
+      }
+    }
+    return membersData;
+  }
+
+  // 6. NUEVO: Cambiar el rol de un usuario
+  Future<void> changeUserRole(
+    String groupId,
+    String targetUid,
+    String newRole,
+  ) async {
+    await _firestore.collection('groups').doc(groupId).update({
+      'roles.$targetUid':
+          newRole, // Esto actualiza solo el rol de ese usuario en el mapa
+    });
+  }
+
+  // 7. NUEVO: Expulsar a un miembro
+  Future<void> removeMember(String groupId, String targetUid) async {
+    await _firestore.collection('groups').doc(groupId).update({
+      'members': FieldValue.arrayRemove([targetUid]), // Lo sacamos de la lista
+      'roles.$targetUid': FieldValue.delete(), // Borramos su rol
+    });
+  }
 }

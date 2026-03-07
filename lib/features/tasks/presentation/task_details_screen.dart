@@ -1,15 +1,21 @@
 // lib/features/tasks/presentation/task_details_screen.dart
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import '../domain/task_model.dart';
 import '../data/task_service.dart';
+import '../../../core/utils/storage_service.dart';
+import '../../groups/domain/group_model.dart'; // ¡NUEVO!
+import '../../groups/data/group_service.dart'; // ¡NUEVO!
 
 class TaskDetailsScreen extends StatefulWidget {
   final TaskModel task;
+  final GroupModel group; // ¡NUEVO! Recibimos el grupo
 
-  const TaskDetailsScreen({super.key, required this.task});
+  const TaskDetailsScreen({super.key, required this.task, required this.group});
 
   @override
   State<TaskDetailsScreen> createState() => _TaskDetailsScreenState();
@@ -17,20 +23,106 @@ class TaskDetailsScreen extends StatefulWidget {
 
 class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   final TaskService _taskService = TaskService();
-  final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+  final StorageService _storageService = StorageService();
+  final GroupService _groupService = GroupService();
+  final ImagePicker _picker = ImagePicker();
 
+  final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
   final TextEditingController _subtaskController = TextEditingController();
-  final TextEditingController _commentController =
-      TextEditingController(); // Controlador para el chat
+  final TextEditingController _commentController = TextEditingController();
 
   late List<Map<String, dynamic>> _currentSubtasks;
+  late List<String> _currentImages;
+  bool _isUploadingImage = false;
+
+  // --- VARIABLES PARA MENCIONES ---
+  List<Map<String, dynamic>> _groupMembers = [];
+  bool _isMentioning = false;
+  String _mentionQuery = '';
 
   @override
   void initState() {
     super.initState();
     _currentSubtasks = List.from(widget.task.subtasks);
+    _currentImages = List.from(widget.task.imageUrls);
+
+    // Cargamos los miembros para poder mencionarlos
+    _loadGroupMembers();
+
+    // Escuchamos el teclado para buscar el "@"
+    _commentController.addListener(_onCommentChanged);
   }
 
+  // Descarga la lista de participantes del grupo
+  void _loadGroupMembers() async {
+    final members = await _groupService.getGroupMembersDetails(
+      widget.group.members,
+    );
+    if (mounted) {
+      setState(() => _groupMembers = members);
+    }
+  }
+
+  // Detecta si estás escribiendo un "@"
+  void _onCommentChanged() {
+    final text = _commentController.text;
+    if (text.isEmpty) {
+      setState(() => _isMentioning = false);
+      return;
+    }
+
+    // Buscamos la última palabra que se está escribiendo
+    final words = text.split(' ');
+    final lastWord = words.last;
+
+    if (lastWord.startsWith('@')) {
+      setState(() {
+        _isMentioning = true;
+        _mentionQuery = lastWord
+            .substring(1)
+            .toLowerCase(); // Quitamos el @ para buscar el nombre
+      });
+    } else {
+      setState(() => _isMentioning = false);
+    }
+  }
+
+  // Agrega el nombre seleccionado a la caja de texto
+  void _insertMention(String username) {
+    final text = _commentController.text;
+    final words = text.split(' ');
+    words.removeLast(); // Borramos lo que estaba escribiendo
+    words.add(
+      '@$username ',
+    ); // Insertamos el nombre completo con un espacio al final
+
+    _commentController.text = words.join(' ');
+    // Movemos el cursor (la rayita parpadeante) al final del texto
+    _commentController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _commentController.text.length),
+    );
+
+    setState(() => _isMentioning = false);
+  }
+
+  // Esta función es la que pinta los @nombres de color azul
+  Widget _buildCommentText(String text) {
+    final words = text.split(' ');
+    return Wrap(
+      children: words.map((word) {
+        final isMention = word.startsWith('@');
+        return Text(
+          '$word ',
+          style: TextStyle(
+            color: isMention ? Colors.blue : const Color(0xFF5D4037),
+            fontWeight: isMention ? FontWeight.bold : FontWeight.normal,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // --- FUNCIONES QUE YA TENÍAMOS ---
   void _addSubtask() async {
     if (_subtaskController.text.trim().isEmpty) return;
     final newSubtask = {
@@ -53,22 +145,73 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     });
   }
 
-  // Función para enviar comentario
   void _sendComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
 
-    _commentController.clear(); // Limpia la caja rápido para mejor experiencia
-    await _taskService.addComment(widget.task.id, currentUserId, text);
+    // Limpiamos la caja de texto visualmente rápido
+    _commentController.clear();
+    setState(() => _isMentioning = false);
+
+    // 1. Extraemos a quiénes mencionaste
+    List<String> mentionedUsernames = [];
+    final words = text.split(' '); // Separamos el mensaje por espacios
+
+    for (var word in words) {
+      // Si la palabra empieza con @ y tiene más de 1 letra
+      if (word.startsWith('@') && word.length > 1) {
+        // Le quitamos el '@' y guardamos solo el nombre (ej. @Juan -> Juan)
+        mentionedUsernames.add(word.substring(1));
+      }
+    }
+
+    // 2. Enviamos el comentario y la lista de mencionados a Firebase
+    await _taskService.addComment(
+      widget.task.id,
+      currentUserId,
+      text,
+      mentionedUsernames,
+    );
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+    if (pickedFile == null) return;
+    setState(() => _isUploadingImage = true);
+    String? downloadUrl = await _storageService.uploadTaskImage(
+      widget.task.id,
+      File(pickedFile.path),
+    );
+    if (downloadUrl != null) {
+      setState(() => _currentImages.add(downloadUrl));
+      await _taskService.updateTaskFields(widget.task.id, {
+        'imageUrls': _currentImages,
+      });
+    } else {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al subir la imagen 😔')),
+        );
+    }
+    setState(() => _isUploadingImage = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    // Filtramos a los miembros según lo que escribas después del @
+    final filteredMembers = _groupMembers.where((m) {
+      final name = m['username'].toString().toLowerCase();
+      return name.contains(_mentionQuery);
+    }).toList();
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFFDF7),
       appBar: AppBar(
         title: const Text(
-          'Detalles de la tarea 🌸',
+          'Detalles 🌸',
           style: TextStyle(
             color: Color(0xFF5D4037),
             fontWeight: FontWeight.bold,
@@ -78,10 +221,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF5D4037)),
       ),
-      // Usamos un Column principal para separar los detalles (arriba) de la caja de comentarios (abajo)
       body: Column(
         children: [
-          // 1. ZONA SCROLLEABLE (Detalles, Checklists y Lista de Comentarios)
+          // ZONA DE DETALLES (SCROLL)
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
@@ -121,6 +263,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     const SizedBox(height: 24),
                   ],
 
+                  // SUBTAREAS
                   const Row(
                     children: [
                       Icon(Icons.checklist_rtl, color: Color(0xFFF8BBD0)),
@@ -136,7 +279,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -152,7 +294,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                             BoxShadow(
                               color: Colors.grey.shade100,
                               blurRadius: 4,
-                              spreadRadius: 1,
                             ),
                           ],
                         ),
@@ -177,7 +318,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                       );
                     },
                   ),
-
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -212,7 +352,85 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   const Divider(color: Color(0xFFFFF59D), thickness: 2),
                   const SizedBox(height: 16),
 
-                  // SECCIÓN DE COMENTARIOS
+                  // FOTOS
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.photo_library, color: Color(0xFFFFCC80)),
+                          SizedBox(width: 8),
+                          Text(
+                            'Fotos y Apuntes 📸',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF5D4037),
+                            ),
+                          ),
+                        ],
+                      ),
+                      _isUploadingImage
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.brown,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : IconButton(
+                              icon: const Icon(
+                                Icons.add_a_photo,
+                                color: Color(0xFF5D4037),
+                              ),
+                              onPressed: _pickAndUploadImage,
+                            ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (_currentImages.isEmpty && !_isUploadingImage)
+                    const Text(
+                      'Aún no hay fotos. ¡Sube la primera!',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  if (_currentImages.isNotEmpty)
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                          ),
+                      itemCount: _currentImages.length,
+                      itemBuilder: (context, index) {
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: Image.network(
+                            _currentImages[index],
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, p) => p == null
+                                ? child
+                                : Container(
+                                    color: Colors.grey.shade100,
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Color(0xFFF8BBD0),
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                        );
+                      },
+                    ),
+
+                  const SizedBox(height: 32),
+                  const Divider(color: Color(0xFFFFF59D), thickness: 2),
+                  const SizedBox(height: 16),
+
+                  // COMENTARIOS
                   const Row(
                     children: [
                       Icon(Icons.chat_bubble_outline, color: Color(0xFFC8E6C9)),
@@ -229,7 +447,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Escuchador de comentarios en tiempo real
                   StreamBuilder<QuerySnapshot>(
                     stream: _taskService.getTaskComments(widget.task.id),
                     builder: (context, snapshot) {
@@ -237,7 +454,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                         return const Center(
                           child: CircularProgressIndicator(color: Colors.brown),
                         );
-
                       final comments = snapshot.data!.docs;
                       if (comments.isEmpty)
                         return const Text(
@@ -254,13 +470,10 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                               comments[index].data() as Map<String, dynamic>;
                           final isMe = data['userId'] == currentUserId;
 
-                          // TODO: Más adelante implementaremos el resaltado azul para "@menciones" aquí
-
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              // Si soy yo, el globo es rosa. Si es otro, es blanco.
                               color: isMe
                                   ? const Color(0xFFF8BBD0).withOpacity(0.3)
                                   : Colors.white,
@@ -285,12 +498,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                Text(
-                                  data['text'] ?? '',
-                                  style: const TextStyle(
-                                    color: Color(0xFF5D4037),
-                                  ),
-                                ),
+                                // Aquí llamamos a la función mágica que pinta los @ de azul
+                                _buildCommentText(data['text'] ?? ''),
                               ],
                             ),
                           );
@@ -303,7 +512,47 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             ),
           ),
 
-          // 2. CAJA DE TEXTO INFERIOR (Fija abajo)
+          // ¡LA CAJA EMERGENTE DE MENCIONES!
+          if (_isMentioning && filteredMembers.isNotEmpty)
+            Container(
+              constraints: const BoxConstraints(maxHeight: 150),
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.shade300,
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: ListView.builder(
+                itemCount: filteredMembers.length,
+                itemBuilder: (context, index) {
+                  final member = filteredMembers[index];
+                  return ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Color(0xFFC8E6C9),
+                      child: Icon(Icons.person, color: Color(0xFF5D4037)),
+                    ),
+                    title: Text(
+                      member['username'],
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF5D4037),
+                      ),
+                    ),
+                    onTap: () => _insertMention(member['username']),
+                  );
+                },
+              ),
+            ),
+
+          // CAJA DE COMENTARIOS INFERIOR
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -335,8 +584,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                           borderSide: BorderSide.none,
                         ),
                       ),
-                      maxLines:
-                          null, // Permite que la caja crezca si el texto es muy largo
+                      maxLines: null,
                     ),
                   ),
                   const SizedBox(width: 8),

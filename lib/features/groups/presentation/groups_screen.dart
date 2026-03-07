@@ -6,6 +6,7 @@ import '../data/group_service.dart';
 import '../domain/group_model.dart';
 import '../../auth/data/auth_service.dart';
 import '../../tasks/presentation/group_tasks_screen.dart';
+import '../../notifications/presentation/notifications_screen.dart';
 
 class GroupsScreen extends StatefulWidget {
   const GroupsScreen({super.key});
@@ -118,6 +119,22 @@ class _GroupsScreenState extends State<GroupsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          // ¡LA NUEVA CAMPANITA! 🔔
+          IconButton(
+            icon: const Icon(
+              Icons.notifications_active,
+              color: Color(0xFFF8BBD0),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(),
+                ),
+              );
+            },
+          ),
+          // Botón de cerrar sesión
           IconButton(
             icon: const Icon(Icons.logout, color: Color(0xFF5D4037)),
             onPressed: () async => await _authService.signOut(),

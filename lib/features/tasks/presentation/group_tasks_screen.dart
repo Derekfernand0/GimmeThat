@@ -7,15 +7,25 @@ import '../data/task_service.dart';
 import '../domain/task_model.dart';
 import 'create_task_screen.dart';
 import 'task_details_screen.dart';
+import '../../groups/presentation/group_members_screen.dart';
 
-class GroupTasksScreen extends StatelessWidget {
+// ¡CAMBIO 1: Ahora es un StatefulWidget!
+class GroupTasksScreen extends StatefulWidget {
   final GroupModel group;
+
+  const GroupTasksScreen({super.key, required this.group});
+
+  @override
+  State<GroupTasksScreen> createState() => _GroupTasksScreenState();
+}
+
+class _GroupTasksScreenState extends State<GroupTasksScreen> {
   final TaskService _taskService = TaskService();
-
-  GroupTasksScreen({super.key, required this.group});
-
-  // Obtenemos tu ID de usuario actual
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+
+  // ¡NUEVAS VARIABLES PARA EL BUSCADOR Y FILTROS! 🦋
+  String _searchQuery = '';
+  String _selectedPriority = 'Todas'; // Puede ser: Todas, alta, media, baja
 
   Color _getTaskColor(DateTime deadline) {
     final now = DateTime.now();
@@ -23,9 +33,9 @@ class GroupTasksScreen extends StatelessWidget {
     final taskDate = DateTime(deadline.year, deadline.month, deadline.day);
     final difference = taskDate.difference(today).inDays;
 
-    if (difference < 0) return const Color(0xFFEF9A9A);
-    if (difference <= 1) return const Color(0xFFFFCC80);
-    return const Color(0xFFA5D6A7);
+    if (difference < 0) return const Color(0xFFEF9A9A); // Rojo
+    if (difference <= 1) return const Color(0xFFFFCC80); // Naranja
+    return const Color(0xFFA5D6A7); // Verde
   }
 
   @override
@@ -33,9 +43,10 @@ class GroupTasksScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: const Color(0xFFFFFDF7), // Crema pastel
         appBar: AppBar(
           title: Text(
-            group.name,
+            widget.group.name,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: Color(0xFF5D4037),
@@ -44,6 +55,20 @@ class GroupTasksScreen extends StatelessWidget {
           backgroundColor: Colors.transparent,
           elevation: 0,
           iconTheme: const IconThemeData(color: Color(0xFF5D4037)),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.people_alt, color: Color(0xFFF8BBD0)),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        GroupMembersScreen(group: widget.group),
+                  ),
+                );
+              },
+            ),
+          ],
           bottom: const TabBar(
             labelColor: Color(0xFF5D4037),
             unselectedLabelColor: Colors.grey,
@@ -54,68 +79,187 @@ class GroupTasksScreen extends StatelessWidget {
             ],
           ),
         ),
-        body: StreamBuilder<List<TaskModel>>(
-          stream: _taskService.getTasksForGroup(group.id),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(color: Colors.brown),
-              );
-            }
-
-            final tasks = snapshot.data ?? [];
-
-            // ¡EL CAMBIO MÁGICO! 🦋
-            // Si la lista 'completedBy' NO contiene tu ID, está pendiente para ti.
-            final pendingTasks = tasks
-                .where((t) => !t.completedBy.contains(currentUserId))
-                .toList();
-            // Si SÍ lo contiene, ya la terminaste.
-            final completedTasks = tasks
-                .where((t) => t.completedBy.contains(currentUserId))
-                .toList();
-
-            return TabBarView(
-              children: [
-                _buildTaskList(
-                  pendingTasks,
-                  "¡Todo listo por aquí! 🦋",
-                  false,
-                  context,
-                ),
-                _buildTaskList(
-                  completedTasks,
-                  "Aún no hay tareas terminadas",
-                  true,
-                  context,
-                ),
-              ],
-            );
-          },
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CreateTaskScreen(groupId: group.id),
+        // ¡CAMBIO 2: Agregamos una columna para poner el buscador arriba de las listas!
+        body: Column(
+          children: [
+            // LA BARRA DE BÚSQUEDA Y LOS FILTROS
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Column(
+                children: [
+                  // Caja de texto del buscador
+                  TextField(
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value
+                            .toLowerCase(); // Guardamos lo que escribes en minúsculas
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Buscar tareas...',
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Color(0xFFF8BBD0),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFFFF59D),
+                          width: 1,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFFFF59D),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Botones de filtro de prioridad (Chips horizontales)
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.filter_list,
+                          color: Colors.grey,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('Todas'),
+                        _buildFilterChip('alta'),
+                        _buildFilterChip('media'),
+                        _buildFilterChip('baja'),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            );
-          },
-          backgroundColor: const Color(0xFFC8E6C9),
-          icon: const Icon(Icons.add, color: Color(0xFF5D4037)),
-          label: const Text(
-            'Nueva Tarea',
-            style: TextStyle(
-              color: Color(0xFF5D4037),
-              fontWeight: FontWeight.bold,
             ),
-          ),
+
+            // LAS LISTAS DE TAREAS (Envueltas en Expanded para que tomen el resto del espacio)
+            Expanded(
+              child: StreamBuilder<List<TaskModel>>(
+                stream: _taskService.getTasksForGroup(widget.group.id),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(color: Colors.brown),
+                    );
+                  }
+
+                  final allTasks = snapshot.data ?? [];
+
+                  // ¡CAMBIO 3: EL CEREBRO DEL FILTRO! 🧠
+                  final filteredTasks = allTasks.where((task) {
+                    // 1. ¿Coincide con el texto buscado? (Buscamos en el título y en la descripción)
+                    final matchesSearch =
+                        task.title.toLowerCase().contains(_searchQuery) ||
+                        task.description.toLowerCase().contains(_searchQuery);
+                    // 2. ¿Coincide con la prioridad seleccionada?
+                    final matchesPriority =
+                        _selectedPriority == 'Todas' ||
+                        task.priority == _selectedPriority;
+
+                    return matchesSearch && matchesPriority;
+                  }).toList();
+
+                  // Separamos las tareas filtradas en Pendientes y Completadas
+                  final pendingTasks = filteredTasks
+                      .where((t) => !t.completedBy.contains(currentUserId))
+                      .toList();
+                  final completedTasks = filteredTasks
+                      .where((t) => t.completedBy.contains(currentUserId))
+                      .toList();
+
+                  return TabBarView(
+                    children: [
+                      _buildTaskList(
+                        pendingTasks,
+                        "No se encontraron tareas 🌱",
+                        false,
+                        context,
+                      ),
+                      _buildTaskList(
+                        completedTasks,
+                        "No hay tareas completadas 🌸",
+                        true,
+                        context,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ),
+        // BOTÓN FLOTANTE CON REGLAS DE ROLES
+        floatingActionButton:
+            (widget.group.roles[currentUserId] == 'host' ||
+                widget.group.roles[currentUserId] == 'admin')
+            ? FloatingActionButton.extended(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          CreateTaskScreen(groupId: widget.group.id),
+                    ),
+                  );
+                },
+                backgroundColor: const Color(0xFFC8E6C9),
+                icon: const Icon(Icons.add, color: Color(0xFF5D4037)),
+                label: const Text(
+                  'Nueva Tarea',
+                  style: TextStyle(
+                    color: Color(0xFF5D4037),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            : null,
       ),
     );
   }
 
+  // Pequeño constructor de botones de filtro
+  Widget _buildFilterChip(String label) {
+    final isSelected = _selectedPriority == label;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: ChoiceChip(
+        label: Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            color: isSelected ? const Color(0xFF5D4037) : Colors.grey.shade600,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 12,
+          ),
+        ),
+        selected: isSelected,
+        selectedColor: const Color(
+          0xFFFFF59D,
+        ), // Amarillo pastel cuando está seleccionado
+        backgroundColor: Colors.white,
+        side: BorderSide(
+          color: isSelected ? const Color(0xFFFFF59D) : Colors.grey.shade300,
+        ),
+        onSelected: (bool selected) {
+          setState(() {
+            _selectedPriority = label;
+          });
+        },
+      ),
+    );
+  }
+
+  // El diseño de la lista de tareas (Se mantiene igual, solo usamos widget.group en vez de group)
   Widget _buildTaskList(
     List<TaskModel> tasks,
     String emptyMessage,
@@ -127,7 +271,7 @@ class GroupTasksScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.auto_awesome, size: 80, color: Color(0xFFFFF59D)),
+            const Icon(Icons.search_off, size: 80, color: Color(0xFFF8BBD0)),
             const SizedBox(height: 20),
             Text(
               emptyMessage,
@@ -146,8 +290,6 @@ class GroupTasksScreen extends StatelessWidget {
         final taskColor = _getTaskColor(task.deadline);
         final dateText =
             '${task.deadline.day}/${task.deadline.month}/${task.deadline.year}';
-
-        // Verificamos si TÚ la completaste
         final amIDone = task.completedBy.contains(currentUserId);
 
         return Card(
@@ -225,14 +367,13 @@ class GroupTasksScreen extends StatelessWidget {
               ],
             ),
             trailing: Checkbox(
-              value: amIDone, // La casilla depende de si tu ID está en la lista
+              value: amIDone,
               activeColor: const Color(0xFFF8BBD0),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(5),
               ),
               onChanged: (bool? value) {
                 if (value != null) {
-                  // Enviamos tu ID para que Firebase te anote o te borre
                   _taskService.toggleTaskCompletion(
                     task.id,
                     currentUserId,
@@ -245,7 +386,10 @@ class GroupTasksScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => TaskDetailsScreen(task: task),
+                  builder: (context) => TaskDetailsScreen(
+                    task: task,
+                    group: widget.group, // ¡Le pasamos el grupo aquí!
+                  ),
                 ),
               );
             },
