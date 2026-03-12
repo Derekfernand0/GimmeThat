@@ -306,7 +306,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     if (_subtaskController.text.trim().isEmpty) return;
     final newSubtask = {
       'title': _subtaskController.text.trim(),
-      'isDone': false,
+      'completedBy': [],
     };
     setState(() {
       _currentSubtasks.add(newSubtask);
@@ -357,12 +357,28 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       if (confirm != true) return;
     }
 
-    setState(() => _currentSubtasks[index]['isDone'] = value);
+    setState(() {
+      List<String> completedBy = List<String>.from(
+        _currentSubtasks[index]['completedBy'] ?? [],
+      );
+
+      if (value == true) {
+        if (!completedBy.contains(currentUserId)) {
+          completedBy.add(currentUserId);
+        }
+      } else {
+        completedBy.remove(currentUserId);
+      }
+
+      _currentSubtasks[index]['completedBy'] = completedBy;
+    });
+
     await _taskService.updateTaskFields(widget.task.id, {
       'subtasks': _currentSubtasks,
     });
   }
 
+  // --- FUNCIÓN MEJORADA: Comentarios y Menciones Globales 🦋 ---
   void _sendComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
@@ -373,9 +389,21 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     List<String> mentionedUsernames = [];
     final words = text.split(' ');
 
-    for (var word in words) {
-      if (word.startsWith('@') && word.length > 1) {
-        mentionedUsernames.add(word.substring(1));
+    final containsEveryone = words.any(
+      (w) => w.toLowerCase() == '@everyone' || w.toLowerCase() == '@todos',
+    );
+
+    if (containsEveryone) {
+      for (var member in _groupMembers) {
+        if (member['uid'] != currentUserId) {
+          mentionedUsernames.add(member['username']);
+        }
+      }
+    } else {
+      for (var word in words) {
+        if (word.startsWith('@') && word.length > 1) {
+          mentionedUsernames.add(word.substring(1));
+        }
       }
     }
 
@@ -568,6 +596,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     itemCount: _currentSubtasks.length,
                     itemBuilder: (context, index) {
                       final subtask = _currentSubtasks[index];
+                      final List<dynamic> completedBy =
+                          subtask['completedBy'] ?? [];
+                      final bool isDoneByMe =
+                          completedBy.contains(currentUserId) ||
+                          (subtask['isDone'] == true);
+
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         decoration: BoxDecoration(
@@ -584,15 +618,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                           title: Text(
                             subtask['title'],
                             style: TextStyle(
-                              color: subtask['isDone']
+                              color: isDoneByMe
                                   ? Colors.grey
                                   : const Color(0xFF5D4037),
-                              decoration: subtask['isDone']
+                              decoration: isDoneByMe
                                   ? TextDecoration.lineThrough
                                   : null,
                             ),
                           ),
-                          value: subtask['isDone'],
+                          value: isDoneByMe,
                           activeColor: const Color(0xFFC8E6C9),
                           checkColor: const Color(0xFF5D4037),
                           onChanged: (val) => _toggleSubtask(index, val),

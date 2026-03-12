@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // ¡NUEVO IMPORT para leer las tareas!
 import '../domain/group_model.dart';
 import '../data/group_service.dart';
 
@@ -62,7 +63,6 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
               ListTile(
                 leading: const Icon(Icons.edit_note, color: Color(0xFFF8BBD0)),
                 title: const Text('Hacer Administrador (Puede crear tareas)'),
@@ -76,7 +76,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                     targetUid,
                     'admin',
                   );
-                  _loadMembers(); // Recargamos la lista
+                  _loadMembers();
                 },
               ),
               ListTile(
@@ -118,9 +118,150 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     );
   }
 
+  // --- ¡NUEVA FUNCIÓN! Muestra las tareas pendientes y terminadas del usuario ---
+  void _showMemberTasksSummary(String memberUid, String username) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // Permite que la ventana sea más alta
+      backgroundColor: const Color(0xFFFFFDF7),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.6, // Empieza a mitad de pantalla
+          maxChildSize: 0.9, // Puede subir casi hasta arriba
+          builder: (context, scrollController) {
+            return Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  Text(
+                    'Tareas de $username 📋',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF5D4037),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Escuchamos las tareas de este grupo en tiempo real
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      // ✅ Buscamos en la colección principal de tareas las que pertenezcan a este grupo
+                      stream: FirebaseFirestore.instance
+                          .collection('tasks')
+                          .where('groupId', isEqualTo: widget.group.id)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.brown,
+                            ),
+                          );
+                        }
+
+                        final tasks = snapshot.data!.docs;
+
+                        // Clasificamos las tareas en Pendientes y Terminadas para ESTE usuario
+                        final completedTasks = [];
+                        final pendingTasks = [];
+
+                        for (var doc in tasks) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final List<dynamic> completedBy =
+                              data['completedBy'] ?? [];
+
+                          if (completedBy.contains(memberUid)) {
+                            completedTasks.add(data);
+                          } else {
+                            pendingTasks.add(data);
+                          }
+                        }
+
+                        return ListView(
+                          controller: scrollController,
+                          children: [
+                            // SECCIÓN DE PENDIENTES
+                            const Text(
+                              'Pendientes ⏳',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.redAccent,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (pendingTasks.isEmpty)
+                              const Text(
+                                '¡No debe nada, está al día! 🌟',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ...pendingTasks
+                                .map(
+                                  (t) => ListTile(
+                                    leading: const Icon(
+                                      Icons.circle_outlined,
+                                      color: Colors.redAccent,
+                                    ),
+                                    title: Text(t['title'] ?? 'Tarea'),
+                                  ),
+                                )
+                                .toList(),
+
+                            const Divider(height: 32, thickness: 2),
+
+                            // SECCIÓN DE TERMINADAS
+                            const Text(
+                              'Terminadas ✅',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (completedTasks.isEmpty)
+                              const Text(
+                                'Aún no ha terminado nada... 🐢',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ...completedTasks
+                                .map(
+                                  (t) => ListTile(
+                                    leading: const Icon(
+                                      Icons.check_circle,
+                                      color: Colors.green,
+                                    ),
+                                    title: Text(
+                                      t['title'] ?? 'Tarea',
+                                      style: const TextStyle(
+                                        decoration: TextDecoration.lineThrough,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Verificamos si TÚ eres el host para darte permisos de editar
     final myRole = widget.group.roles[currentUserId] ?? 'member';
     final amIHost = myRole == 'host';
 
@@ -148,7 +289,6 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                 final memberUid = member['uid'];
                 final role = widget.group.roles[memberUid] ?? 'member';
 
-                // Colores de los roles para que se vea lindo
                 Color roleColor = Colors.grey.shade300;
                 String roleName = 'Miembro (Solo ver)';
                 if (role == 'host') {
@@ -169,6 +309,10 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                   ),
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
+                    // Al tocar toda la tarjeta de la persona, vemos sus tareas
+                    onTap: () =>
+                        _showMemberTasksSummary(memberUid, member['username']),
+
                     leading: CircleAvatar(
                       backgroundColor: const Color(0xFFC8E6C9),
                       child: Text(
@@ -191,7 +335,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                       style: TextStyle(color: Colors.grey.shade600),
                     ),
 
-                    // Si YO soy el host y NO soy yo mismo el de la tarjeta, muestro el botón de ajustes
+                    // Si YO soy el host y NO soy yo mismo, muestro la tuerca de ajustes de rol
                     trailing: (amIHost && memberUid != currentUserId)
                         ? IconButton(
                             icon: const Icon(

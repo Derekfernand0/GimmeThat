@@ -3,6 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+// ¡Importamos los modelos y pantallas necesarias para viajar a la tarea!
+import '../../tasks/domain/task_model.dart';
+import '../../groups/domain/group_model.dart';
+import '../../tasks/presentation/task_details_screen.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -27,12 +31,86 @@ class NotificationsScreen extends StatelessWidget {
         .delete();
   }
 
+  // --- NUEVA FUNCIÓN MÁGICA: Navegar a la Tarea (Deep Linking) 🚀 ---
+  Future<void> _navigateToTask(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) async {
+    final taskId = data['taskId'];
+    final groupId = data['groupId'];
+
+    if (taskId == null || groupId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Esta alerta es muy antigua y no tiene enlace. 😔'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      // 1. Buscamos el documento del Grupo
+      final groupDoc = await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(groupId)
+          .get();
+      if (!groupDoc.exists) throw Exception("El grupo ya no existe.");
+      final group = GroupModel.fromMap(groupDoc.data()!, groupDoc.id);
+
+      // 2. Buscamos el documento de la Tarea
+      final taskDoc = await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(taskId)
+          .get();
+      if (!taskDoc.exists) throw Exception("Esta tarea ya fue eliminada.");
+      final task = TaskModel.fromMap(taskDoc.data()!, taskDoc.id);
+
+      // 3. Viajamos a la pantalla de detalles
+      if (context.mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TaskDetailsScreen(task: task, group: group),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error al abrir la tarea: ${e.toString().split(": ").last}',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  // Función para elegir el ícono dependiendo del tipo de notificación
+  IconData _getIconForType(String? type) {
+    switch (type) {
+      case 'mention':
+        return Icons.alternate_email;
+      case 'newComment':
+        return Icons.chat_bubble_outline;
+      case 'newTask':
+        return Icons.assignment_add;
+      case 'taskCompleted':
+        return Icons.task_alt;
+      case 'newMember':
+        return Icons.person_add;
+      default:
+        return Icons.notifications;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFDF7), // Nuestro crema pastel
+      backgroundColor: const Color(0xFFFFFDF7),
       appBar: AppBar(
         title: const Text(
           'Tus Alertas 🔔',
@@ -46,12 +124,11 @@ class NotificationsScreen extends StatelessWidget {
         iconTheme: const IconThemeData(color: Color(0xFF5D4037)),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // Escuchamos la colección secreta de notificaciones de ESTE usuario
         stream: FirebaseFirestore.instance
             .collection('users')
             .doc(currentUserId)
             .collection('notifications')
-            .orderBy('createdAt', descending: true) // Las más nuevas arriba
+            .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -93,6 +170,7 @@ class NotificationsScreen extends StatelessWidget {
               final doc = notifications[index];
               final data = doc.data() as Map<String, dynamic>;
               final isRead = data['isRead'] ?? false;
+              final type = data['type'] as String?;
 
               return Dismissible(
                 key: Key(doc.id),
@@ -110,9 +188,7 @@ class NotificationsScreen extends StatelessWidget {
                   elevation: 0,
                   color: isRead
                       ? Colors.white
-                      : const Color(
-                          0xFFFFF59D,
-                        ).withOpacity(0.3), // Amarillo suave si no la has leído
+                      : const Color(0xFFFFF59D).withOpacity(0.3),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                     side: BorderSide(
@@ -124,12 +200,13 @@ class NotificationsScreen extends StatelessWidget {
                   ),
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: Color(0xFFF8BBD0),
+                    leading: CircleAvatar(
+                      backgroundColor: const Color(0xFFF8BBD0),
+                      // Usamos el icono que toque según el tipo de alerta
                       child: Icon(
-                        Icons.alternate_email,
-                        color: Color(0xFF5D4037),
-                      ), // Icono de arroba @
+                        _getIconForType(type),
+                        color: const Color(0xFF5D4037),
+                      ),
                     ),
                     title: Text(
                       data['title'] ?? '',
@@ -145,8 +222,10 @@ class NotificationsScreen extends StatelessWidget {
                       style: const TextStyle(color: Color(0xFF5D4037)),
                     ),
                     onTap: () {
+                      // 1. Marcamos como leída para que se quite el fondo amarillo
                       _markAsRead(doc.id, currentUserId);
-                      // TODO: Más adelante podemos hacer que al tocarla te lleve directo a la tarea
+                      // 2. ¡VIAJAMOS A LA TAREA! 🚀
+                      _navigateToTask(context, data);
                     },
                   ),
                 ),
