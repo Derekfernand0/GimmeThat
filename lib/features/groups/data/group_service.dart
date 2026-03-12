@@ -7,7 +7,7 @@ import '../domain/group_model.dart';
 class GroupService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // 1. Generar un código aleatorio de 5 caracteres (Ej. A7K29)
+  // 1. Generar un código aleatorio de 5 caracteres
   String _generateInviteCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final random = Random();
@@ -23,30 +23,26 @@ class GroupService {
   Future<void> createGroup(String groupName, String creatorUid) async {
     String inviteCode = _generateInviteCode();
 
-    // Verificamos que el código no exista ya (muy raro, pero buena práctica)
     final existing = await _firestore
         .collection('groups')
         .where('inviteCode', isEqualTo: inviteCode)
         .get();
     if (existing.docs.isNotEmpty) {
-      inviteCode =
-          _generateInviteCode(); // Generamos otro si por casualidad se repite
+      inviteCode = _generateInviteCode();
     }
 
-    // Creamos el grupo en Firestore
     await _firestore.collection('groups').add({
       'name': groupName,
       'inviteCode': inviteCode,
-      'members': [creatorUid], // El creador es el primer miembro
-      'roles': {creatorUid: 'host'}, // Le damos el rol de "host" (dueño)
+      'members': [creatorUid],
+      'roles': {creatorUid: 'host'},
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
 
-  // 3. Unirse a un grupo usando el código
+  // 3. Unirse a un grupo usando el código (¡CON NOTIFICACIONES! 🔔)
   Future<String> joinGroup(String inviteCode, String userUid) async {
     try {
-      // Buscamos el grupo que tenga ese código
       final querySnapshot = await _firestore
           .collection('groups')
           .where('inviteCode', isEqualTo: inviteCode.toUpperCase())
@@ -58,19 +54,49 @@ class GroupService {
 
       final groupDoc = querySnapshot.docs.first;
       final groupData = groupDoc.data();
-      List<dynamic> members = groupData['members'] ?? [];
+      final List<String> members = List<String>.from(
+        groupData['members'] ?? [],
+      );
 
-      // Revisamos si el usuario ya está en el grupo
       if (members.contains(userUid)) {
         return "Ya eres miembro de este grupo 🌸";
       }
 
-      // Si no está, lo agregamos como "miembro" normal
+      // Lo agregamos a la base de datos
       await groupDoc.reference.update({
         'members': FieldValue.arrayUnion([userUid]),
-        'roles.$userUid':
-            'member', // Esto actualiza el mapa de roles agregando al nuevo usuario
+        'roles.$userUid': 'member',
       });
+
+      // --- ¡NUEVA MAGIA! 🦋 Notificar a los miembros anteriores ---
+      try {
+        // Obtenemos el nombre del usuario nuevo
+        final userDoc = await _firestore.collection('users').doc(userUid).get();
+        final newUserName = userDoc.data()?['username'] ?? 'Alguien nuevo';
+        final groupName = groupData['name'] ?? 'el grupo';
+
+        // Le mandamos la alerta a cada miembro que YA estaba en el grupo
+        for (String memberId in members) {
+          await _firestore
+              .collection('users')
+              .doc(memberId)
+              .collection('notifications')
+              .add({
+                'type': 'newMember',
+                'title': '¡Nuevo integrante en $groupName! 👋',
+                'message': '$newUserName se ha unido a la sala.',
+                'groupId': groupDoc.id,
+                'groupName': groupName,
+                'createdAt': FieldValue.serverTimestamp(),
+                'isRead': false,
+                // Ponemos taskId en null porque esta alerta no pertenece a una tarea específica
+                'taskId': null,
+              });
+        }
+      } catch (e) {
+        print("Error al enviar notificación de nuevo miembro: $e");
+      }
+      // -------------------------------------------------------------
 
       return "¡Te has unido al grupo con éxito! 🦋";
     } catch (e) {
@@ -78,7 +104,7 @@ class GroupService {
     }
   }
 
-  // 4. Escuchar los grupos del usuario en Tiempo Real
+  // 4. Escuchar los grupos del usuario
   Stream<List<GroupModel>> getUserGroupsStream(String userUid) {
     return _firestore
         .collection('groups')
@@ -91,12 +117,11 @@ class GroupService {
         });
   }
 
-  // 5. NUEVO: Obtener los perfiles (nombres) de los miembros del grupo
+  // 5. Obtener los perfiles (nombres) de los miembros
   Future<List<Map<String, dynamic>>> getGroupMembersDetails(
     List<String> memberUids,
   ) async {
     List<Map<String, dynamic>> membersData = [];
-    // Buscamos el perfil de cada usuario en la base de datos
     for (String uid in memberUids) {
       final doc = await _firestore.collection('users').doc(uid).get();
       if (doc.exists) {
@@ -106,40 +131,36 @@ class GroupService {
     return membersData;
   }
 
-  // 6. NUEVO: Cambiar el rol de un usuario
+  // 6. Cambiar el rol
   Future<void> changeUserRole(
     String groupId,
     String targetUid,
     String newRole,
   ) async {
     await _firestore.collection('groups').doc(groupId).update({
-      'roles.$targetUid':
-          newRole, // Esto actualiza solo el rol de ese usuario en el mapa
+      'roles.$targetUid': newRole,
     });
   }
 
-  // 7. NUEVO: Expulsar a un miembro
+  // 7. Expulsar a un miembro
   Future<void> removeMember(String groupId, String targetUid) async {
     await _firestore.collection('groups').doc(groupId).update({
-      'members': FieldValue.arrayRemove([targetUid]), // Lo sacamos de la lista
-      'roles.$targetUid': FieldValue.delete(), // Borramos su rol
+      'members': FieldValue.arrayRemove([targetUid]),
+      'roles.$targetUid': FieldValue.delete(),
     });
   }
 
-  // 8. BORRAR SALA (Solo para el Host)
+  // 8. BORRAR SALA
   Future<void> deleteGroup(String groupId) async {
-    // a. Primero buscamos todas las tareas que pertenecen a esta sala
     final tasksQuery = await _firestore
         .collection('tasks')
         .where('groupId', isEqualTo: groupId)
         .get();
 
-    // b. Borramos cada tarea encontrada
     for (var doc in tasksQuery.docs) {
       await doc.reference.delete();
     }
 
-    // c. Finalmente borramos el documento de la sala
     await _firestore.collection('groups').doc(groupId).delete();
   }
 }

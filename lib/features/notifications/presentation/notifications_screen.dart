@@ -225,7 +225,9 @@ class NotificationsScreen extends StatelessWidget {
                       // 1. Marcamos como leída para que se quite el fondo amarillo
                       _markAsRead(doc.id, currentUserId);
                       // 2. ¡VIAJAMOS A LA TAREA! 🚀
-                      _navigateToTask(context, data);
+                      if (data['taskId'] != null) {
+                        _navigateToTask(context, data);
+                      }
                     },
                   ),
                 ),

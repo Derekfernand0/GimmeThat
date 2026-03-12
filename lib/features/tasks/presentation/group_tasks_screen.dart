@@ -10,7 +10,6 @@ import 'task_details_screen.dart';
 import '../../groups/presentation/group_members_screen.dart';
 import '../../groups/data/group_service.dart';
 
-// ¡CAMBIO 1: Ahora es un StatefulWidget!
 class GroupTasksScreen extends StatefulWidget {
   final GroupModel group;
 
@@ -25,9 +24,8 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
   final GroupService _groupService = GroupService();
 
-  // ¡NUEVAS VARIABLES PARA EL BUSCADOR Y FILTROS! 🦋
   String _searchQuery = '';
-  String _selectedPriority = 'Todas'; // Puede ser: Todas, alta, media, baja
+  String _selectedPriority = 'Todas';
 
   Color _getTaskColor(DateTime deadline) {
     final now = DateTime.now();
@@ -62,11 +60,8 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () async {
-              // 1. Cerramos el diálogo
               Navigator.pop(context);
-              // 2. Ejecutamos el borrado
               await _groupService.deleteGroup(widget.group.id);
-              // 3. Regresamos a la pantalla de Mis Grupos
               if (context.mounted) Navigator.pop(context);
             },
             child: const Text(
@@ -84,7 +79,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFFDF7), // Crema pastel
+        backgroundColor: const Color(0xFFFFFDF7),
         appBar: AppBar(
           title: Text(
             widget.group.name,
@@ -97,7 +92,6 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
           elevation: 0,
           iconTheme: const IconThemeData(color: Color(0xFF5D4037)),
           actions: [
-            // Botón de Calendario
             IconButton(
               icon: const Icon(Icons.calendar_month, color: Color(0xFFC8E6C9)),
               onPressed: () => Navigator.push(
@@ -107,7 +101,6 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                 ),
               ),
             ),
-            // Botón de Participantes
             IconButton(
               icon: const Icon(Icons.people_alt, color: Color(0xFFF8BBD0)),
               onPressed: () => Navigator.push(
@@ -117,9 +110,6 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                 ),
               ),
             ),
-
-            // ¡BOTÓN MÁGICO DE BORRAR SALA! 🗑️
-            // Solo se muestra si eres el 'host'
             if (widget.group.roles[currentUserId] == 'host')
               IconButton(
                 icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
@@ -137,20 +127,16 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
             ],
           ),
         ),
-        // ¡CAMBIO 2: Agregamos una columna para poner el buscador arriba de las listas!
         body: Column(
           children: [
-            // LA BARRA DE BÚSQUEDA Y LOS FILTROS
             Container(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: Column(
                 children: [
-                  // Caja de texto del buscador
                   TextField(
                     onChanged: (value) {
                       setState(() {
-                        _searchQuery = value
-                            .toLowerCase(); // Guardamos lo que escribes en minúsculas
+                        _searchQuery = value.toLowerCase();
                       });
                     },
                     decoration: InputDecoration(
@@ -179,7 +165,6 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Botones de filtro de prioridad (Chips horizontales)
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -201,7 +186,6 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
               ),
             ),
 
-            // LAS LISTAS DE TAREAS (Envueltas en Expanded para que tomen el resto del espacio)
             Expanded(
               child: StreamBuilder<List<TaskModel>>(
                 stream: _taskService.getTasksForGroup(widget.group.id),
@@ -214,21 +198,47 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
 
                   final allTasks = snapshot.data ?? [];
 
-                  // ¡CAMBIO 3: EL CEREBRO DEL FILTRO! 🧠
+                  // Calculamos la fecha de hoy a medianoche para hacer la comparación
+                  final now = DateTime.now();
+                  final today = DateTime(now.year, now.month, now.day);
+
+                  // EL CEREBRO DEL FILTRO 🧠
                   final filteredTasks = allTasks.where((task) {
-                    // 1. ¿Coincide con el texto buscado? (Buscamos en el título y en la descripción)
+                    // 1. Filtro de Búsqueda
                     final matchesSearch =
                         task.title.toLowerCase().contains(_searchQuery) ||
                         task.description.toLowerCase().contains(_searchQuery);
-                    // 2. ¿Coincide con la prioridad seleccionada?
+
+                    // 2. Filtro de Prioridad
                     final matchesPriority =
                         _selectedPriority == 'Todas' ||
                         task.priority == _selectedPriority;
 
+                    // 3. NUEVO FILTRO: Ocultar tareas archivadas (Más de 60 días viejas) 🙈
+                    final taskDate = DateTime(
+                      task.deadline.year,
+                      task.deadline.month,
+                      task.deadline.day,
+                    );
+
+                    // Calculamos la diferencia en días entre hoy y la fecha de la tarea
+                    final differenceInDays = today.difference(taskDate).inDays;
+
+                    // ¿Han pasado MÁS de 60 días (aprox 2 meses) desde que caducó?
+                    final isArchived = differenceInDays > 60;
+
+                    final isCompletedByMe = task.completedBy.contains(
+                      currentUserId,
+                    );
+
+                    // Si la tarea caducó hace MÁS de 2 meses Y NO la has hecho, la ocultamos
+                    if (isArchived && !isCompletedByMe) {
+                      return false;
+                    }
+
                     return matchesSearch && matchesPriority;
                   }).toList();
 
-                  // Separamos las tareas filtradas en Pendientes y Completadas
                   final pendingTasks = filteredTasks
                       .where((t) => !t.completedBy.contains(currentUserId))
                       .toList();
@@ -240,7 +250,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                     children: [
                       _buildTaskList(
                         pendingTasks,
-                        "No se encontraron tareas 🌱",
+                        "No tienes tareas pendientes 🌱",
                         false,
                         context,
                       ),
@@ -257,7 +267,6 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
             ),
           ],
         ),
-        // BOTÓN FLOTANTE CON REGLAS DE ROLES
         floatingActionButton:
             (widget.group.roles[currentUserId] == 'host' ||
                 widget.group.roles[currentUserId] == 'admin')
@@ -286,7 +295,6 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
     );
   }
 
-  // Pequeño constructor de botones de filtro
   Widget _buildFilterChip(String label) {
     final isSelected = _selectedPriority == label;
     return Padding(
@@ -301,9 +309,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
           ),
         ),
         selected: isSelected,
-        selectedColor: const Color(
-          0xFFFFF59D,
-        ), // Amarillo pastel cuando está seleccionado
+        selectedColor: const Color(0xFFFFF59D),
         backgroundColor: Colors.white,
         side: BorderSide(
           color: isSelected ? const Color(0xFFFFF59D) : Colors.grey.shade300,
@@ -317,7 +323,6 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
     );
   }
 
-  // El diseño de la lista de tareas (Se mantiene igual, solo usamos widget.group en vez de group)
   Widget _buildTaskList(
     List<TaskModel> tasks,
     String emptyMessage,
@@ -329,11 +334,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // REEMPLAZA EL ICONO POR ESTO:
-            Image.asset(
-              'lib/assets/images/empty_tasks.png',
-              height: 150, // Ajusta el tamaño como prefieras
-            ),
+            Image.asset('lib/assets/images/empty_tasks.png', height: 150),
             const SizedBox(height: 20),
             Text(
               emptyMessage,
@@ -437,7 +438,6 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
               onChanged: (bool? value) async {
                 if (value == null) return;
 
-                // Solo pedimos confirmación si va a COMPLETAR la tarea (true)
                 if (value == true) {
                   bool? confirm = await showDialog<bool>(
                     context: context,
@@ -474,11 +474,9 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                     ),
                   );
 
-                  // Si el usuario toca "Aún me falta" o cierra la ventana, detenemos el proceso
                   if (confirm != true) return;
                 }
 
-                // Si confirmó que sí (o si está desmarcando la tarea), lo guardamos en Firebase
                 _taskService.toggleTaskCompletion(
                   task.id,
                   currentUserId,
@@ -490,10 +488,8 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => TaskDetailsScreen(
-                    task: task,
-                    group: widget.group, // ¡Le pasamos el grupo aquí!
-                  ),
+                  builder: (context) =>
+                      TaskDetailsScreen(task: task, group: widget.group),
                 ),
               );
             },

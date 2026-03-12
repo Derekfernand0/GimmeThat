@@ -453,9 +453,16 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     final isDeadlineOverdue = deadlineDate.isBefore(today);
     final formattedDeadline =
         '${_currentDeadline.day.toString().padLeft(2, '0')}/${_currentDeadline.month.toString().padLeft(2, '0')}/${_currentDeadline.year}';
-    final filteredMembers = _groupMembers.where((m) {
+    // Creamos una lista temporal que incluya el comodín de everyone
+    final List<Map<String, dynamic>> allMentionables = [
+      {'username': 'everyone', 'uid': 'todos_id'}, // ¡El comodín mágico!
+      ..._groupMembers,
+    ];
+
+    final filteredMembers = allMentionables.where((m) {
       final name = m['username'].toString().toLowerCase();
-      return name.contains(_mentionQuery);
+      // Filtramos para que no te salgas tú mismo en la lista
+      return name.contains(_mentionQuery) && m['uid'] != currentUserId;
     }).toList();
 
     return Scaffold(
