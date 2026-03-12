@@ -8,12 +8,12 @@ import 'package:image_picker/image_picker.dart';
 import '../domain/task_model.dart';
 import '../data/task_service.dart';
 import '../../../core/utils/storage_service.dart';
-import '../../groups/domain/group_model.dart'; // ¡NUEVO!
-import '../../groups/data/group_service.dart'; // ¡NUEVO!
+import '../../groups/domain/group_model.dart';
+import '../../groups/data/group_service.dart';
 
 class TaskDetailsScreen extends StatefulWidget {
   final TaskModel task;
-  final GroupModel group; // ¡NUEVO! Recibimos el grupo
+  final GroupModel group;
 
   const TaskDetailsScreen({super.key, required this.task, required this.group});
 
@@ -87,6 +87,132 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     }
   }
 
+  // Función para confirmar la eliminación de la tarea 🗑️
+  Future<void> _confirmDeleteTask() async {
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Eliminar tarea',
+          style: TextStyle(color: Colors.red),
+        ),
+        content: const Text(
+          '¿Estás seguro de que deseas eliminar esta tarea permanentemente? Esta acción no se puede deshacer.',
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _storageService.deleteTaskImages(widget.task.id);
+        await _taskService.deleteTask(widget.task.id);
+
+        if (mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.showSnackBar(
+            const SnackBar(content: Text('La tarea se eliminó correctamente.')),
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            Navigator.pop(context); // Regresamos a la pantalla anterior
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('No se pudo eliminar la tarea: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  // Función para confirmar que la TAREA PRINCIPAL está lista ✨
+  Future<void> _confirmCompleteMainTask() async {
+    // Verificamos si ya la habías completado antes
+    final isAlreadyCompleted = widget.task.completedBy.contains(currentUserId);
+
+    if (isAlreadyCompleted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ya marcaste esta tarea como lista. ¡Buen trabajo! 🌸'),
+        ),
+      );
+      return;
+    }
+
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          '¡Misión Cumplida! 🎉',
+          style: TextStyle(color: Color(0xFF5D4037)),
+        ),
+        content: const Text(
+          '¿Estás seguro de que quieres marcar toda esta tarea como completada?',
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Aún me falta',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF8BBD0),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              '¡Sí, lo logré!',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      // Agregamos al usuario actual a la lista de completedBy
+      List<String> updatedCompletedBy = List.from(widget.task.completedBy);
+      updatedCompletedBy.add(currentUserId);
+
+      await _taskService.updateTaskFields(widget.task.id, {
+        'completedBy': updatedCompletedBy,
+        'isCompleted': true, // Si quieres, también cambiamos el estado global
+      });
+
+      if (mounted) {
+        setState(() {
+          // Actualizamos la vista localmente sin necesidad de recargar de Firebase
+          widget.task.completedBy.add(currentUserId);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('¡Felicidades por terminar tu tarea! 🦋'),
+          ),
+        );
+      }
+    }
+  }
+
   // Agrega el nombre seleccionado a la caja de texto
   void _insertMention(String username) {
     final text = _commentController.text;
@@ -97,7 +223,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     ); // Insertamos el nombre completo con un espacio al final
 
     _commentController.text = words.join(' ');
-    // Movemos el cursor (la rayita parpadeante) al final del texto
+    // Movemos el cursor al final del texto
     _commentController.selection = TextSelection.fromPosition(
       TextPosition(offset: _commentController.text.length),
     );
@@ -111,7 +237,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
     List<String> names = [];
     for (var uid in widget.task.completedBy) {
-      // Buscamos al usuario en nuestra lista de miembros del grupo
       final member = _groupMembers.firstWhere(
         (m) => m['uid'] == uid,
         orElse: () => {'username': 'Usuario'},
@@ -121,7 +246,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     return names.join(', ');
   }
 
-  // Esta función es la que pinta los @nombres de color azul
+  // Esta función pinta los @nombres de color azul
   Widget _buildCommentText(String text) {
     final words = text.split(' ');
     return Wrap(
@@ -138,7 +263,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     );
   }
 
-  // --- FUNCIONES QUE YA TENÍAMOS ---
+  // --- FUNCIONES DE TAREAS Y SUBTAREAS ---
   void _addSubtask() async {
     if (_subtaskController.text.trim().isEmpty) return;
     final newSubtask = {
@@ -154,8 +279,47 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     });
   }
 
-  void _toggleSubtask(int index, bool? value) async {
-    setState(() => _currentSubtasks[index]['isDone'] = value ?? false);
+  // Subtareas CON confirmación ✅
+  Future<void> _toggleSubtask(int index, bool? value) async {
+    if (value == null) return;
+
+    if (value == true) {
+      bool? confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text(
+            '¿Subtarea terminada? ✨',
+            style: TextStyle(color: Color(0xFF5D4037)),
+          ),
+          content: const Text(
+            '¿Seguro que quieres marcar este paso como completado?',
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Aún no', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF8BBD0),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(
+                'Sí, confirmar',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+    }
+
+    setState(() => _currentSubtasks[index]['isDone'] = value);
     await _taskService.updateTaskFields(widget.task.id, {
       'subtasks': _currentSubtasks,
     });
@@ -165,23 +329,18 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
 
-    // Limpiamos la caja de texto visualmente rápido
     _commentController.clear();
     setState(() => _isMentioning = false);
 
-    // 1. Extraemos a quiénes mencionaste
     List<String> mentionedUsernames = [];
-    final words = text.split(' '); // Separamos el mensaje por espacios
+    final words = text.split(' ');
 
     for (var word in words) {
-      // Si la palabra empieza con @ y tiene más de 1 letra
       if (word.startsWith('@') && word.length > 1) {
-        // Le quitamos el '@' y guardamos solo el nombre (ej. @Juan -> Juan)
         mentionedUsernames.add(word.substring(1));
       }
     }
 
-    // 2. Enviamos el comentario y la lista de mencionados a Firebase
     await _taskService.addComment(
       widget.task.id,
       currentUserId,
@@ -207,17 +366,17 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         'imageUrls': _currentImages,
       });
     } else {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error al subir la imagen 😔')),
         );
+      }
     }
     setState(() => _isUploadingImage = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Filtramos a los miembros según lo que escribas después del @
     final filteredMembers = _groupMembers.where((m) {
       final name = m['username'].toString().toLowerCase();
       return name.contains(_mentionQuery);
@@ -236,10 +395,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF5D4037)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
+            onPressed: _confirmDeleteTask,
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // ZONA DE DETALLES (SCROLL)
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
@@ -262,7 +426,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                         Icons.stars,
                         size: 18,
                         color: Color(0xFFFFF59D),
-                      ), // Estrellita amarilla
+                      ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
@@ -301,7 +465,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     const SizedBox(height: 24),
                   ],
 
-                  // SUBTAREAS
                   const Row(
                     children: [
                       Icon(Icons.checklist_rtl, color: Color(0xFFF8BBD0)),
@@ -390,7 +553,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   const Divider(color: Color(0xFFFFF59D), thickness: 2),
                   const SizedBox(height: 16),
 
-                  // FOTOS
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -447,7 +609,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                         final imageUrl = _currentImages[index];
                         return GestureDetector(
                           onTap: () {
-                            // AQUÍ ESTÁ LA MAGIA PARA AGRANDAR LA IMAGEN 🌸
                             showDialog(
                               context: context,
                               builder: (context) => Dialog(
@@ -484,7 +645,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                               ),
                             );
                           },
-                          // Así se ve la imagen pequeñita en la cuadrícula
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(15),
                             child: Image.network(
@@ -510,7 +670,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   const Divider(color: Color(0xFFFFF59D), thickness: 2),
                   const SizedBox(height: 16),
 
-                  // COMENTARIOS
                   const Row(
                     children: [
                       Icon(Icons.chat_bubble_outline, color: Color(0xFFC8E6C9)),
@@ -530,16 +689,18 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   StreamBuilder<QuerySnapshot>(
                     stream: _taskService.getTaskComments(widget.task.id),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData)
+                      if (!snapshot.hasData) {
                         return const Center(
                           child: CircularProgressIndicator(color: Colors.brown),
                         );
+                      }
                       final comments = snapshot.data!.docs;
-                      if (comments.isEmpty)
+                      if (comments.isEmpty) {
                         return const Text(
                           'Sé el primero en comentar algo...',
                           style: TextStyle(color: Colors.grey),
                         );
+                      }
 
                       return ListView.builder(
                         shrinkWrap: true,
@@ -578,7 +739,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                // Aquí llamamos a la función mágica que pinta los @ de azul
                                 _buildCommentText(data['text'] ?? ''),
                               ],
                             ),
@@ -592,7 +752,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             ),
           ),
 
-          // ¡LA CAJA EMERGENTE DE MENCIONES!
           if (_isMentioning && filteredMembers.isNotEmpty)
             Container(
               constraints: const BoxConstraints(maxHeight: 150),
@@ -632,7 +791,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
               ),
             ),
 
-          // CAJA DE COMENTARIOS INFERIOR
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(

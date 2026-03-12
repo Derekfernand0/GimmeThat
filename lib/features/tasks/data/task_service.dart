@@ -52,7 +52,25 @@ class TaskService {
     await _firestore.collection('tasks').doc(taskId).update(fieldsToUpdate);
   }
 
-  // 5. NUEVO: Enviar un comentario Y detectar menciones
+  // 5. Borrar una tarea y sus comentarios
+  Future<void> deleteTask(String taskId) async {
+    final comments = await _firestore
+        .collection('tasks')
+        .doc(taskId)
+        .collection('comments')
+        .get();
+
+    final batch = _firestore.batch();
+
+    for (final comment in comments.docs) {
+      batch.delete(comment.reference);
+    }
+
+    batch.delete(_firestore.collection('tasks').doc(taskId));
+    await batch.commit();
+  }
+
+  // 6. NUEVO: Enviar un comentario Y detectar menciones
   Future<void> addComment(
     String taskId,
     String userId,
@@ -109,7 +127,7 @@ class TaskService {
     }
   }
 
-  // 6. NUEVO: Escuchar los comentarios en tiempo real
+  // 7. NUEVO: Escuchar los comentarios en tiempo real
   Stream<QuerySnapshot> getTaskComments(String taskId) {
     return _firestore
         .collection('tasks')

@@ -434,14 +434,56 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(5),
               ),
-              onChanged: (bool? value) {
-                if (value != null) {
-                  _taskService.toggleTaskCompletion(
-                    task.id,
-                    currentUserId,
-                    value,
+              onChanged: (bool? value) async {
+                if (value == null) return;
+
+                // Solo pedimos confirmación si va a COMPLETAR la tarea (true)
+                if (value == true) {
+                  bool? confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text(
+                        '¡Misión Cumplida! 🎉',
+                        style: TextStyle(color: Color(0xFF5D4037)),
+                      ),
+                      content: const Text(
+                        '¿Estás seguro de que quieres marcar esta tarea como completada?',
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text(
+                            'Aún me falta',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF8BBD0),
+                          ),
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text(
+                            '¡Sí, lo logré!',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
                   );
+
+                  // Si el usuario toca "Aún me falta" o cierra la ventana, detenemos el proceso
+                  if (confirm != true) return;
                 }
+
+                // Si confirmó que sí (o si está desmarcando la tarea), lo guardamos en Firebase
+                _taskService.toggleTaskCompletion(
+                  task.id,
+                  currentUserId,
+                  value,
+                );
               },
             ),
             onTap: () {

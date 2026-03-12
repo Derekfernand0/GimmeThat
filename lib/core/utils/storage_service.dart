@@ -6,6 +6,18 @@ import 'package:firebase_storage/firebase_storage.dart';
 class StorageService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
+  Future<void> _deleteFolderContents(Reference ref) async {
+    final result = await ref.listAll();
+
+    for (final item in result.items) {
+      await item.delete();
+    }
+
+    for (final prefix in result.prefixes) {
+      await _deleteFolderContents(prefix);
+    }
+  }
+
   // Función para subir una imagen y obtener su URL (Link)
   Future<String?> uploadTaskImage(String taskId, File imageFile) async {
     try {
@@ -29,6 +41,17 @@ class StorageService {
     } catch (e) {
       print('Error al subir la imagen: $e');
       return null;
+    }
+  }
+
+  Future<void> deleteTaskImages(String taskId) async {
+    try {
+      final taskImagesRef = _storage.ref().child('task_images').child(taskId);
+      await _deleteFolderContents(taskImagesRef);
+    } on FirebaseException catch (e) {
+      if (e.code != 'object-not-found') {
+        rethrow;
+      }
     }
   }
 }
