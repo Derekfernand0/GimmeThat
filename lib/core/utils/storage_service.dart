@@ -54,4 +54,15 @@ class StorageService {
       }
     }
   }
+
+  Future<void> deleteImageByUrl(String imageUrl) async {
+    try {
+      final imageRef = _storage.refFromURL(imageUrl);
+      await imageRef.delete();
+    } on FirebaseException catch (e) {
+      if (e.code != 'object-not-found') {
+        rethrow;
+      }
+    }
+  }
 }

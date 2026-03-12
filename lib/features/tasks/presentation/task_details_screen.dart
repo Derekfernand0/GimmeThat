@@ -33,6 +33,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   late List<Map<String, dynamic>> _currentSubtasks;
   late List<String> _currentImages;
+  late DateTime _currentDeadline;
   bool _isUploadingImage = false;
 
   // --- VARIABLES PARA MENCIONES ---
@@ -43,6 +44,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    _currentDeadline = widget.task.deadline;
     _currentSubtasks = List.from(widget.task.subtasks);
     _currentImages = List.from(widget.task.imageUrls);
 
@@ -246,6 +248,42 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     return names.join(', ');
   }
 
+  // Función para abrir el calendario y editar la fecha 📅
+  Future<void> _editDeadline() async {
+    DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _currentDeadline,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFF8BBD0),
+              onPrimary: Colors.white,
+              onSurface: Color(0xFF5D4037),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        _currentDeadline = pickedDate;
+      });
+      await _taskService.updateTaskFields(widget.task.id, {
+        'deadline': Timestamp.fromDate(pickedDate),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('¡Fecha límite actualizada! ⏰')),
+        );
+      }
+    }
+  }
+
   // Esta función pinta los @nombres de color azul
   Widget _buildCommentText(String text) {
     final words = text.split(' ');
@@ -377,6 +415,16 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final deadlineDate = DateTime(
+      _currentDeadline.year,
+      _currentDeadline.month,
+      _currentDeadline.day,
+    );
+    final isDeadlineOverdue = deadlineDate.isBefore(today);
+    final formattedDeadline =
+        '${_currentDeadline.day.toString().padLeft(2, '0')}/${_currentDeadline.month.toString().padLeft(2, '0')}/${_currentDeadline.year}';
     final filteredMembers = _groupMembers.where((m) {
       final name = m['username'].toString().toLowerCase();
       return name.contains(_mentionQuery);
@@ -417,6 +465,40 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF5D4037),
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Para el: $formattedDeadline',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDeadlineOverdue
+                              ? Colors.redAccent
+                              : Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton.icon(
+                        onPressed: _editDeadline,
+                        icon: const Icon(
+                          Icons.edit_calendar,
+                          size: 16,
+                          color: Color(0xFFF8BBD0),
+                        ),
+                        label: const Text(
+                          'Editar',
+                          style: TextStyle(color: Color(0xFFF8BBD0)),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   const SizedBox(height: 8),
@@ -631,13 +713,110 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                     Positioned(
                                       top: 40,
                                       right: 20,
-                                      child: IconButton(
-                                        icon: const Icon(
-                                          Icons.close,
-                                          color: Colors.white,
-                                          size: 30,
-                                        ),
-                                        onPressed: () => Navigator.pop(context),
+                                      child: Row(
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.delete,
+                                              color: Colors.redAccent,
+                                              size: 30,
+                                            ),
+                                            onPressed: () async {
+                                              bool?
+                                              confirm = await showDialog<bool>(
+                                                context: context,
+                                                builder: (context) => AlertDialog(
+                                                  title: const Text(
+                                                    'Borrar Foto',
+                                                  ),
+                                                  content: const Text(
+                                                    '¿Seguro que quieres eliminar esta foto de la tarea?',
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            context,
+                                                            false,
+                                                          ),
+                                                      child: const Text(
+                                                        'Cancelar',
+                                                        style: TextStyle(
+                                                          color: Colors.grey,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    ElevatedButton(
+                                                      style:
+                                                          ElevatedButton.styleFrom(
+                                                            backgroundColor:
+                                                                Colors.red,
+                                                          ),
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            context,
+                                                            true,
+                                                          ),
+                                                      child: const Text(
+                                                        'Eliminar',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+
+                                              if (confirm == true) {
+                                                try {
+                                                  await _storageService
+                                                      .deleteImageByUrl(
+                                                        imageUrl,
+                                                      );
+                                                  setState(() {
+                                                    _currentImages.removeAt(
+                                                      index,
+                                                    );
+                                                  });
+                                                  await _taskService
+                                                      .updateTaskFields(
+                                                        widget.task.id,
+                                                        {
+                                                          'imageUrls':
+                                                              _currentImages,
+                                                        },
+                                                      );
+                                                  if (mounted) {
+                                                    Navigator.pop(context);
+                                                  }
+                                                } catch (e) {
+                                                  if (mounted) {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          'No se pudo borrar la foto: $e',
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }
+                                                }
+                                              }
+                                            },
+                                          ),
+                                          const SizedBox(width: 10),
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.close,
+                                              color: Colors.white,
+                                              size: 30,
+                                            ),
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
