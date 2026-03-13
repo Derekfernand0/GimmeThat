@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 import 'features/auth/presentation/auth_gate.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/notification_service.dart';
+import 'features/splash/presentation/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,7 +34,7 @@ class MyApp extends StatelessWidget {
       title: 'Task Manager App',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const AuthGate(),
+      home: const SplashScreen(), // ¡Ahora inicia con el Splash Animado!
     );
   }
 }
