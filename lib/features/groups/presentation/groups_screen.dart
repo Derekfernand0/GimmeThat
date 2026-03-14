@@ -93,10 +93,11 @@ class _GroupsScreenState extends State<GroupsScreen>
 
   void _showGroupOptions(GroupModel group, String myRole) {
     final isMuted = _mutedGroups.contains(group.id);
+    final theme = Theme.of(context);
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFFFFFDF7),
+      backgroundColor: theme.scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
@@ -108,10 +109,10 @@ class _GroupsScreenState extends State<GroupsScreen>
             children: [
               Text(
                 'Opciones de ${group.name} ⚙️',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF5D4037),
+                  color: theme.primaryColor,
                 ),
               ),
               const SizedBox(height: 20),
@@ -294,14 +295,16 @@ class _GroupsScreenState extends State<GroupsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFDF7),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Mis Grupos',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Color(0xFF5D4037),
+            color: theme.primaryColor,
           ),
         ),
         backgroundColor: Colors.transparent,
@@ -381,7 +384,7 @@ class _GroupsScreenState extends State<GroupsScreen>
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.logout, color: Color(0xFF5D4037)),
+            icon: Icon(Icons.logout, color: theme.primaryColor),
             onPressed: () async => await _authService.signOut(),
           ),
         ],
@@ -399,12 +402,12 @@ class _GroupsScreenState extends State<GroupsScreen>
                 children: [
                   Image.asset('lib/assets/images/empty_tasks.png', height: 150),
                   const SizedBox(height: 20),
-                  const Text(
+                  Text(
                     'No estás en ningún grupo',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF5D4037),
+                      color: theme.primaryColor,
                     ),
                   ),
                   Text(
@@ -426,7 +429,7 @@ class _GroupsScreenState extends State<GroupsScreen>
 
               return Card(
                 elevation: 0,
-                color: Colors.white,
+                color: theme.cardColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                   side: const BorderSide(color: Color(0xFFFFF59D), width: 2),
@@ -438,8 +441,8 @@ class _GroupsScreenState extends State<GroupsScreen>
                     backgroundColor: const Color(0xFFC8E6C9),
                     child: Text(
                       group.name[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: Color(0xFF5D4037),
+                      style: TextStyle(
+                        color: theme.primaryColor,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -448,10 +451,10 @@ class _GroupsScreenState extends State<GroupsScreen>
                     children: [
                       Text(
                         group.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
-                          color: Color(0xFF5D4037),
+                          color: theme.primaryColor,
                         ),
                       ),
                       // ¡SI ESTÁ SILENCIADO LE PONEMOS EL ICONITO AL LADO DEL NOMBRE! 🔇
@@ -495,11 +498,11 @@ class _GroupsScreenState extends State<GroupsScreen>
             heroTag: "btn1",
             onPressed: _showJoinGroupDialog,
             backgroundColor: const Color(0xFFF8BBD0),
-            icon: const Icon(Icons.group_add, color: Color(0xFF5D4037)),
-            label: const Text(
+            icon: Icon(Icons.group_add, color: theme.primaryColor),
+            label: Text(
               'Unirse',
               style: TextStyle(
-                color: Color(0xFF5D4037),
+                color: theme.primaryColor,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -509,11 +512,11 @@ class _GroupsScreenState extends State<GroupsScreen>
             heroTag: "btn2",
             onPressed: _showCreateGroupDialog,
             backgroundColor: const Color(0xFFFFF59D),
-            icon: const Icon(Icons.add, color: Color(0xFF5D4037)),
-            label: const Text(
+            icon: Icon(Icons.add, color: theme.primaryColor),
+            label: Text(
               'Crear',
               style: TextStyle(
-                color: Color(0xFF5D4037),
+                color: theme.primaryColor,
                 fontWeight: FontWeight.bold,
               ),
             ),
