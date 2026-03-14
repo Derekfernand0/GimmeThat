@@ -20,6 +20,9 @@ class _NotificationSettingsScreenState
   bool _notifyMentions = true;
   bool _notifyNewMembers = true;
   bool _notifyTaskCompleted = true;
+  bool _notifyNewTasks = true;
+  bool _notifyNewComments = true;
+  bool _notifyTaskExpiring = true;
 
   @override
   void initState() {
@@ -27,7 +30,6 @@ class _NotificationSettingsScreenState
     _loadSettings();
   }
 
-  // Cargar preferencias desde Firebase
   Future<void> _loadSettings() async {
     final doc = await FirebaseFirestore.instance
         .collection('users')
@@ -39,11 +41,13 @@ class _NotificationSettingsScreenState
         _notifyMentions = settings['mentions'] ?? true;
         _notifyNewMembers = settings['newMembers'] ?? true;
         _notifyTaskCompleted = settings['taskCompleted'] ?? true;
+        _notifyNewTasks = settings['newTasks'] ?? true;
+        _notifyNewComments = settings['newComments'] ?? true;
+        _notifyTaskExpiring = settings['taskExpiring'] ?? true;
       });
     }
   }
 
-  // Guardar preferencias en Firebase
   Future<void> _saveSettings() async {
     await FirebaseFirestore.instance.collection('users').doc(currentUserId).set(
       {
@@ -51,6 +55,9 @@ class _NotificationSettingsScreenState
           'mentions': _notifyMentions,
           'newMembers': _notifyNewMembers,
           'taskCompleted': _notifyTaskCompleted,
+          'newTasks': _notifyNewTasks,
+          'newComments': _notifyNewComments,
+          'taskExpiring': _notifyTaskExpiring,
         },
       },
       SetOptions(merge: true),
@@ -83,42 +90,83 @@ class _NotificationSettingsScreenState
           ),
           const SizedBox(height: 20),
 
-          SwitchListTile(
-            activeColor: const Color(0xFFF8BBD0),
-            title: const Text('Menciones (@)'),
-            subtitle: const Text(
-              'Cuando alguien te menciona en un apunte o tarea.',
-            ),
-            value: _notifyMentions,
-            onChanged: (val) {
-              setState(() => _notifyMentions = val);
+          _buildSwitch(
+            'Menciones (@)',
+            'Cuando alguien te menciona.',
+            _notifyMentions,
+            (v) {
+              setState(() => _notifyMentions = v);
               _saveSettings();
             },
           ),
-          SwitchListTile(
-            activeColor: const Color(0xFFF8BBD0),
-            title: const Text('Nuevos Integrantes'),
-            subtitle: const Text('Cuando alguien se une a tu sala.'),
-            value: _notifyNewMembers,
-            onChanged: (val) {
-              setState(() => _notifyNewMembers = val);
+          _buildSwitch(
+            'Comentarios',
+            'Cuando alguien comenta en una tarea.',
+            _notifyNewComments,
+            (v) {
+              setState(() => _notifyNewComments = v);
               _saveSettings();
             },
           ),
-          SwitchListTile(
-            activeColor: const Color(0xFFF8BBD0),
-            title: const Text('Tareas Completadas'),
-            subtitle: const Text(
-              'Cuando alguien termina una tarea de tu grupo.',
-            ),
-            value: _notifyTaskCompleted,
-            onChanged: (val) {
-              setState(() => _notifyTaskCompleted = val);
+          _buildSwitch(
+            'Nuevas Tareas',
+            'Cuando se crea una tarea nueva.',
+            _notifyNewTasks,
+            (v) {
+              setState(() => _notifyNewTasks = v);
+              _saveSettings();
+            },
+          ),
+          _buildSwitch(
+            'Tareas Completadas',
+            'Cuando alguien termina una tarea.',
+            _notifyTaskCompleted,
+            (v) {
+              setState(() => _notifyTaskCompleted = v);
+              _saveSettings();
+            },
+          ),
+          _buildSwitch(
+            'Vencimientos Urgentes',
+            'Cuando a una tarea le queda 1 día.',
+            _notifyTaskExpiring,
+            (v) {
+              setState(() => _notifyTaskExpiring = v);
+              _saveSettings();
+            },
+          ),
+          _buildSwitch(
+            'Nuevos Integrantes',
+            'Cuando alguien se une a la sala.',
+            _notifyNewMembers,
+            (v) {
+              setState(() => _notifyNewMembers = v);
               _saveSettings();
             },
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSwitch(
+    String title,
+    String subtitle,
+    bool value,
+    Function(bool) onChanged,
+  ) {
+    return SwitchListTile(
+      activeColor: const Color(0xFFF8BBD0),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF5D4037),
+        ),
+      ),
+      subtitle: Text(subtitle),
+      value: value,
+      onChanged: onChanged,
     );
   }
 }

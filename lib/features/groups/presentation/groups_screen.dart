@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ¡Añadido!
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data/group_service.dart';
 import '../domain/group_model.dart';
 import '../../auth/data/auth_service.dart';
@@ -17,43 +17,54 @@ class GroupsScreen extends StatefulWidget {
   State<GroupsScreen> createState() => _GroupsScreenState();
 }
 
-// Agregamos SingleTickerProviderStateMixin para poder usar animaciones
 class _GroupsScreenState extends State<GroupsScreen>
     with SingleTickerProviderStateMixin {
   final GroupService _groupService = GroupService();
   final AuthService _authService = AuthService();
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
-  // --- VARIABLES DE ANIMACIÓN ---
   late AnimationController _bellController;
   late Animation<double> _bellAnimation;
+
+  // --- NUEVO: LISTA DE GRUPOS SILENCIADOS ---
+  List<String> _mutedGroups = [];
 
   @override
   void initState() {
     super.initState();
 
-    // Configuramos la animación (meneo de campana)
+    // Escuchamos tu perfil para saber qué grupos tienes silenciados
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUserId)
+        .snapshots()
+        .listen((doc) {
+          if (doc.exists && mounted) {
+            setState(() {
+              _mutedGroups = List<String>.from(
+                doc.data()?['mutedGroups'] ?? [],
+              );
+            });
+          }
+        });
+
     _bellController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-
     _bellAnimation = TweenSequence<double>([
       TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.2), weight: 1),
       TweenSequenceItem(tween: Tween(begin: 0.2, end: -0.2), weight: 2),
       TweenSequenceItem(tween: Tween(begin: -0.2, end: 0.0), weight: 1),
     ]).animate(_bellController);
 
-    // Hacemos que la campana se mueva cada 5 segundos si el controlador está activo
     _startBellTimer();
   }
 
   void _startBellTimer() async {
     while (mounted) {
       await Future.delayed(const Duration(seconds: 5));
-      if (mounted) {
-        _bellController.forward(from: 0.0);
-      }
+      if (mounted) _bellController.forward(from: 0.0);
     }
   }
 
@@ -63,7 +74,146 @@ class _GroupsScreenState extends State<GroupsScreen>
     super.dispose();
   }
 
-  // --- MÉTODOS DE DIÁLOGO ---
+  // --- NUEVO: FUNCIÓN PARA SILENCIAR/ACTIVAR GRUPO ---
+  Future<void> _toggleMuteGroup(String groupId) async {
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUserId);
+
+    if (_mutedGroups.contains(groupId)) {
+      await userRef.update({
+        'mutedGroups': FieldValue.arrayRemove([groupId]),
+      });
+    } else {
+      await userRef.update({
+        'mutedGroups': FieldValue.arrayUnion([groupId]),
+      });
+    }
+  }
+
+  void _showGroupOptions(GroupModel group, String myRole) {
+    final isMuted = _mutedGroups.contains(group.id);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFFFFFDF7),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Opciones de ${group.name} ⚙️',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF5D4037),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // BOTÓN 1: SILENCIAR GRUPO 🤫
+              ListTile(
+                leading: Icon(
+                  isMuted
+                      ? Icons.notifications_active
+                      : Icons.notifications_off,
+                  color: isMuted ? const Color(0xFFF8BBD0) : Colors.grey,
+                ),
+                title: Text(
+                  isMuted ? 'Activar notificaciones' : 'Silenciar grupo',
+                ),
+                subtitle: Text(
+                  isMuted
+                      ? 'Volverás a recibir alertas.'
+                      : 'No recibirás alertas de esta sala.',
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _toggleMuteGroup(group.id);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isMuted
+                            ? 'Notificaciones activadas 🔔'
+                            : 'Grupo silenciado 🤫',
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              const Divider(),
+
+              // BOTÓN 2: SALIR DEL GRUPO 👋
+              if (myRole != 'host')
+                ListTile(
+                  leading: const Icon(
+                    Icons.exit_to_app,
+                    color: Colors.redAccent,
+                  ),
+                  title: const Text(
+                    'Salir del grupo',
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    bool? confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('¿Salir de la sala? 👋'),
+                        content: Text(
+                          'Ya no tendrás acceso a las tareas de ${group.name}.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Me quedo'),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.redAccent,
+                            ),
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text(
+                              'Sí, salir',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true)
+                      await _groupService.removeMember(group.id, currentUserId);
+                  },
+                ),
+
+              if (myRole == 'host')
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Eres el dueño de la sala. Para salir, debes eliminarla desde adentro.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _showCreateGroupDialog() {
     final TextEditingController nameController = TextEditingController();
     showDialog(
@@ -157,21 +307,16 @@ class _GroupsScreenState extends State<GroupsScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          // --- CAMPANITA ANIMADA CON CONTADOR ---
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('users')
                 .doc(currentUserId)
                 .collection('notifications')
-                .where(
-                  'isRead',
-                  isEqualTo: false,
-                ) // Solo contamos las no leídas
+                .where('isRead', isEqualTo: false)
                 .snapshots(),
             builder: (context, snapshot) {
               final unreadCount = snapshot.data?.docs.length ?? 0;
               final hasNotifications = unreadCount > 0;
-
               return RotationTransition(
                 turns: hasNotifications
                     ? _bellAnimation
@@ -189,14 +334,12 @@ class _GroupsScreenState extends State<GroupsScreen>
                             : Colors.grey,
                         size: 28,
                       ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const NotificationsScreen(),
-                          ),
-                        );
-                      },
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationsScreen(),
+                        ),
+                      ),
                     ),
                     if (hasNotifications)
                       Positioned(
@@ -228,21 +371,15 @@ class _GroupsScreenState extends State<GroupsScreen>
               );
             },
           ),
-
-          // --- NUEVO: BOTÓN DE AJUSTES DE NOTIFICACIONES ⚙️ ---
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.grey),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationSettingsScreen(),
-                ),
-              );
-            },
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const NotificationSettingsScreen(),
+              ),
+            ),
           ),
-
-          // --- BOTÓN DE SALIR ---
           IconButton(
             icon: const Icon(Icons.logout, color: Color(0xFF5D4037)),
             onPressed: () async => await _authService.signOut(),
@@ -252,9 +389,8 @@ class _GroupsScreenState extends State<GroupsScreen>
       body: StreamBuilder<List<GroupModel>>(
         stream: _groupService.getUserGroupsStream(currentUserId),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting)
             return const Center(child: CircularProgressIndicator());
-          }
           final groups = snapshot.data ?? [];
           if (groups.isEmpty) {
             return Center(
@@ -284,6 +420,10 @@ class _GroupsScreenState extends State<GroupsScreen>
             itemCount: groups.length,
             itemBuilder: (context, index) {
               final group = groups[index];
+              final isMuted = _mutedGroups.contains(
+                group.id,
+              ); // Verificamos si está silenciado
+
               return Card(
                 elevation: 0,
                 color: Colors.white,
@@ -304,19 +444,36 @@ class _GroupsScreenState extends State<GroupsScreen>
                       ),
                     ),
                   ),
-                  title: Text(
-                    group.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: Color(0xFF5D4037),
-                    ),
+                  title: Row(
+                    children: [
+                      Text(
+                        group.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: Color(0xFF5D4037),
+                        ),
+                      ),
+                      // ¡SI ESTÁ SILENCIADO LE PONEMOS EL ICONITO AL LADO DEL NOMBRE! 🔇
+                      if (isMuted) ...[
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.notifications_off,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                      ],
+                    ],
                   ),
                   subtitle: Text('Código: ${group.inviteCode}'),
                   trailing: const Icon(
                     Icons.arrow_forward_ios,
                     color: Color(0xFFF8BBD0),
                   ),
+                  onLongPress: () {
+                    final myRole = group.roles[currentUserId] ?? 'member';
+                    _showGroupOptions(group, myRole);
+                  },
                   onTap: () {
                     Navigator.push(
                       context,

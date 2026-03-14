@@ -443,6 +443,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // --- NUEVO: CALCULAMOS LOS PERMISOS ---
+    final myRole = widget.group.roles[currentUserId] ?? 'member';
+    final canEdit = myRole == 'host' || myRole == 'admin';
+    // --------------------------------------
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final deadlineDate = DateTime(
@@ -479,10 +484,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF5D4037)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
-            onPressed: _confirmDeleteTask,
-          ),
+          // ¡SOLO SI PUEDE EDITAR SE MUESTRA LA BASURA!
+          if (canEdit)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: _confirmDeleteTask,
+            ),
         ],
       ),
       body: Column(
@@ -521,18 +528,20 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                         ),
                       ),
                       const Spacer(),
-                      TextButton.icon(
-                        onPressed: _editDeadline,
-                        icon: const Icon(
-                          Icons.edit_calendar,
-                          size: 16,
-                          color: Color(0xFFF8BBD0),
+                      // ¡SOLO SI PUEDE EDITAR SE MUESTRA EL BOTÓN DE CAMBIAR FECHA!
+                      if (canEdit)
+                        TextButton.icon(
+                          onPressed: _editDeadline,
+                          icon: const Icon(
+                            Icons.edit_calendar,
+                            size: 16,
+                            color: Color(0xFFF8BBD0),
+                          ),
+                          label: const Text(
+                            'Editar',
+                            style: TextStyle(color: Color(0xFFF8BBD0)),
+                          ),
                         ),
-                        label: const Text(
-                          'Editar',
-                          style: TextStyle(color: Color(0xFFF8BBD0)),
-                        ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 16),

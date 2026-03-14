@@ -1,9 +1,9 @@
-const functions = require("firebase-functions/v1"); // <-- ¡ESTE ES EL CAMBIO MÁGICO! 🦋
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
 // ============================================================================
-// 1. ROBOT DE NOTIFICACIONES PUSH 🔔
+// 1. ROBOT DE NOTIFICACIONES PUSH (RESPETUOSO) 🔔🤫
 // ============================================================================
 exports.sendPushNotification = functions.firestore
     .document("users/{userId}/notifications/{notificationId}")
@@ -17,11 +17,22 @@ exports.sendPushNotification = functions.firestore
         const userData = userDoc.data();
         const fcmToken = userData.fcmToken;
         const settings = userData.notificationSettings || {};
+        const mutedGroups = userData.mutedGroups || []; // <-- Lista de grupos silenciados
 
-        // REVISAMOS EL MENÚ DE CONFIGURACIÓN
-        if (notificationData.type === 'mention' && settings.mentions === false) return console.log("Menciones apagadas");
-        if (notificationData.type === 'newMember' && settings.newMembers === false) return console.log("Nuevos miembros apagados");
-        if (notificationData.type === 'taskCompleted' && settings.taskCompleted === false) return console.log("Tareas completadas apagadas");
+        // 1. REVISAMOS SI EL GRUPO ESTÁ SILENCIADO 🔇
+        if (notificationData.groupId && mutedGroups.includes(notificationData.groupId)) {
+            console.log(`Grupo ${notificationData.groupId} está silenciado. No molestaremos al usuario.`);
+            return null; // Detenemos la notificación push
+        }
+
+        // 2. REVISAMOS EL MENÚ DE CONFIGURACIÓN ⚙️ (Todas las opciones)
+        const type = notificationData.type;
+        if (type === 'mention' && settings.mentions === false) return console.log("Menciones apagadas");
+        if (type === 'newMember' && settings.newMembers === false) return console.log("Nuevos miembros apagados");
+        if (type === 'taskCompleted' && settings.taskCompleted === false) return console.log("Tareas completadas apagadas");
+        if (type === 'newTask' && settings.newTasks === false) return console.log("Nuevas tareas apagadas");
+        if (type === 'newComment' && settings.newComments === false) return console.log("Nuevos comentarios apagados");
+        if (type === 'taskExpiring' && settings.taskExpiring === false) return console.log("Vencimientos urgentes apagados");
 
         if (!fcmToken) return console.log("El usuario no tiene token FCM");
 
