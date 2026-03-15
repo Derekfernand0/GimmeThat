@@ -108,20 +108,22 @@ class NotificationsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFDF7),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Tus Alertas 🔔',
           style: TextStyle(
-            color: Color(0xFF5D4037),
+            color: theme.appBarTheme.titleTextStyle?.color,
             fontWeight: FontWeight.bold,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF5D4037)),
+        iconTheme: IconThemeData(color: theme.primaryColor),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -132,8 +134,8 @@ class NotificationsScreen extends StatelessWidget {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Colors.brown),
+            return Center(
+              child: CircularProgressIndicator(color: theme.primaryColor),
             );
           }
 
@@ -144,19 +146,19 @@ class NotificationsScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.notifications_paused,
                     size: 80,
-                    color: Color(0xFFF8BBD0),
+                    color: colorScheme.secondary,
                   ),
                   const SizedBox(height: 20),
-                  const Text(
+                  Text(
                     'No tienes notificaciones nuevas 🌸',
-                    style: TextStyle(fontSize: 18, color: Color(0xFF5D4037)),
+                    style: TextStyle(fontSize: 18, color: theme.primaryColor),
                   ),
                   Text(
                     'Aquí aparecerán tus menciones',
-                    style: TextStyle(color: Colors.grey.shade600),
+                    style: TextStyle(color: theme.textTheme.bodyMedium?.color),
                   ),
                 ],
               ),
@@ -178,8 +180,11 @@ class NotificationsScreen extends StatelessWidget {
                 background: Container(
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.only(right: 20),
-                  color: Colors.redAccent,
-                  child: const Icon(Icons.delete, color: Colors.white),
+                  color: colorScheme.errorContainer,
+                  child: Icon(
+                    Icons.delete,
+                    color: colorScheme.onErrorContainer,
+                  ),
                 ),
                 onDismissed: (direction) {
                   _deleteNotification(doc.id, currentUserId);
@@ -187,25 +192,25 @@ class NotificationsScreen extends StatelessWidget {
                 child: Card(
                   elevation: 0,
                   color: isRead
-                      ? Colors.white
-                      : const Color(0xFFFFF59D).withOpacity(0.3),
+                      ? theme.cardColor
+                      : colorScheme.secondaryContainer.withValues(alpha: 0.35),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                     side: BorderSide(
                       color: isRead
-                          ? Colors.grey.shade200
-                          : const Color(0xFFFFF59D),
+                          ? theme.dividerColor
+                          : colorScheme.secondary,
                       width: 2,
                     ),
                   ),
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: const Color(0xFFF8BBD0),
+                      backgroundColor: colorScheme.secondaryContainer,
                       // Usamos el icono que toque según el tipo de alerta
                       child: Icon(
                         _getIconForType(type),
-                        color: const Color(0xFF5D4037),
+                        color: colorScheme.onSecondaryContainer,
                       ),
                     ),
                     title: Text(
@@ -214,12 +219,12 @@ class NotificationsScreen extends StatelessWidget {
                         fontWeight: isRead
                             ? FontWeight.normal
                             : FontWeight.bold,
-                        color: const Color(0xFF5D4037),
+                        color: theme.primaryColor,
                       ),
                     ),
                     subtitle: Text(
                       data['message'] ?? '',
-                      style: const TextStyle(color: Color(0xFF5D4037)),
+                      style: TextStyle(color: theme.textTheme.bodyLarge?.color),
                     ),
                     onTap: () {
                       // 1. Marcamos como leída para que se quite el fondo amarillo

@@ -91,12 +91,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   // Función para confirmar la eliminación de la tarea 🗑️
   Future<void> _confirmDeleteTask() async {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text(
+        title: Text(
           'Eliminar tarea',
-          style: TextStyle(color: Colors.red),
+          style: TextStyle(color: colorScheme.error),
         ),
         content: const Text(
           '¿Estás seguro de que deseas eliminar esta tarea permanentemente? Esta acción no se puede deshacer.',
@@ -105,14 +108,17 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: theme.textTheme.bodyMedium?.color),
+            ),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: colorScheme.error),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
+            child: Text(
               'Eliminar',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: colorScheme.onError),
             ),
           ),
         ],
@@ -146,6 +152,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   // Función para confirmar que la TAREA PRINCIPAL está lista ✨
   Future<void> _confirmCompleteMainTask() async {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     // Verificamos si ya la habías completado antes
     final isAlreadyCompleted = widget.task.completedBy.contains(currentUserId);
 
@@ -161,9 +170,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text(
+        title: Text(
           '¡Misión Cumplida! 🎉',
-          style: TextStyle(color: Color(0xFF5D4037)),
+          style: TextStyle(color: theme.primaryColor),
         ),
         content: const Text(
           '¿Estás seguro de que quieres marcar toda esta tarea como completada?',
@@ -172,19 +181,19 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(
+            child: Text(
               'Aún me falta',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: theme.textTheme.bodyMedium?.color),
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF8BBD0),
+              backgroundColor: colorScheme.secondary,
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
+            child: Text(
               '¡Sí, lo logré!',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: colorScheme.onSecondary),
             ),
           ),
         ],
@@ -250,6 +259,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   // Función para abrir el calendario y editar la fecha 📅
   Future<void> _editDeadline() async {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: _currentDeadline,
@@ -258,10 +270,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFF8BBD0),
-              onPrimary: Colors.white,
-              onSurface: Color(0xFF5D4037),
+            colorScheme: colorScheme,
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(foregroundColor: theme.primaryColor),
             ),
           ),
           child: child!,
@@ -286,6 +297,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   // Esta función pinta los @nombres de color azul
   Widget _buildCommentText(String text) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final words = text.split(' ');
     return Wrap(
       children: words.map((word) {
@@ -293,7 +306,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         return Text(
           '$word ',
           style: TextStyle(
-            color: isMention ? Colors.blue : const Color(0xFF5D4037),
+            color: isMention
+                ? theme.primaryColor
+                : theme.textTheme.bodyLarge?.color,
             fontWeight: isMention ? FontWeight.bold : FontWeight.normal,
           ),
         );
@@ -319,15 +334,18 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   // Subtareas CON confirmación ✅
   Future<void> _toggleSubtask(int index, bool? value) async {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     if (value == null) return;
 
     if (value == true) {
       bool? confirm = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text(
+          title: Text(
             '¿Subtarea terminada? ✨',
-            style: TextStyle(color: Color(0xFF5D4037)),
+            style: TextStyle(color: theme.primaryColor),
           ),
           content: const Text(
             '¿Seguro que quieres marcar este paso como completado?',
@@ -338,16 +356,19 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Aún no', style: TextStyle(color: Colors.grey)),
+              child: Text(
+                'Aún no',
+                style: TextStyle(color: theme.textTheme.bodyMedium?.color),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF8BBD0),
+                backgroundColor: colorScheme.secondary,
               ),
               onPressed: () => Navigator.pop(context, true),
-              child: const Text(
+              child: Text(
                 'Sí, confirmar',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: colorScheme.onSecondary),
               ),
             ),
           ],
@@ -443,6 +464,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     // --- NUEVO: CALCULAMOS LOS PERMISOS ---
     final myRole = widget.group.roles[currentUserId] ?? 'member';
     final canEdit = myRole == 'host' || myRole == 'admin';
@@ -471,23 +495,23 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFDF7),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Detalles 🌸',
           style: TextStyle(
-            color: Color(0xFF5D4037),
+            color: theme.appBarTheme.titleTextStyle?.color,
             fontWeight: FontWeight.bold,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF5D4037)),
+        iconTheme: IconThemeData(color: theme.primaryColor),
         actions: [
           // ¡SOLO SI PUEDE EDITAR SE MUESTRA LA BASURA!
           if (canEdit)
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              icon: Icon(Icons.delete_outline, color: colorScheme.error),
               onPressed: _confirmDeleteTask,
             ),
         ],
@@ -502,19 +526,19 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                 children: [
                   Text(
                     widget.task.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF5D4037),
+                      color: theme.primaryColor,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.calendar_today,
                         size: 16,
-                        color: Colors.grey,
+                        color: theme.textTheme.bodyMedium?.color,
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -522,8 +546,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           color: isDeadlineOverdue
-                              ? Colors.redAccent
-                              : Colors.grey,
+                              ? colorScheme.error
+                              : theme.textTheme.bodyMedium?.color,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -532,14 +556,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                       if (canEdit)
                         TextButton.icon(
                           onPressed: _editDeadline,
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.edit_calendar,
                             size: 16,
-                            color: Color(0xFFF8BBD0),
+                            color: colorScheme.secondary,
                           ),
-                          label: const Text(
+                          label: Text(
                             'Editar',
-                            style: TextStyle(color: Color(0xFFF8BBD0)),
+                            style: TextStyle(color: colorScheme.secondary),
                           ),
                         ),
                     ],
@@ -548,11 +572,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.stars,
-                        size: 18,
-                        color: Color(0xFFFFF59D),
-                      ),
+                      Icon(Icons.stars, size: 18, color: colorScheme.secondary),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
@@ -560,7 +580,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Colors.grey.shade700,
+                            color: theme.textTheme.bodyMedium?.color,
                             fontStyle: FontStyle.italic,
                           ),
                         ),
@@ -573,34 +593,31 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: theme.cardColor,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: const Color(0xFFFFF59D),
-                          width: 2,
-                        ),
+                        border: Border.all(color: theme.dividerColor, width: 2),
                       ),
                       child: Text(
                         widget.task.description,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
-                          color: Color(0xFF5D4037),
+                          color: theme.textTheme.bodyLarge?.color,
                         ),
                       ),
                     ),
                     const SizedBox(height: 24),
                   ],
 
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.checklist_rtl, color: Color(0xFFF8BBD0)),
-                      SizedBox(width: 8),
+                      Icon(Icons.checklist_rtl, color: colorScheme.secondary),
+                      const SizedBox(width: 8),
                       Text(
                         'Pasos para lograrlo 🌱',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF5D4037),
+                          color: theme.primaryColor,
                         ),
                       ),
                     ],
@@ -621,11 +638,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: theme.cardColor,
                           borderRadius: BorderRadius.circular(15),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.grey.shade100,
+                              color: theme.shadowColor.withValues(alpha: 0.08),
                               blurRadius: 4,
                             ),
                           ],
@@ -635,16 +652,16 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                             subtask['title'],
                             style: TextStyle(
                               color: isDoneByMe
-                                  ? Colors.grey
-                                  : const Color(0xFF5D4037),
+                                  ? theme.textTheme.bodyMedium?.color
+                                  : theme.primaryColor,
                               decoration: isDoneByMe
                                   ? TextDecoration.lineThrough
                                   : null,
                             ),
                           ),
                           value: isDoneByMe,
-                          activeColor: const Color(0xFFC8E6C9),
-                          checkColor: const Color(0xFF5D4037),
+                          activeColor: colorScheme.secondaryContainer,
+                          checkColor: colorScheme.onSecondaryContainer,
                           onChanged: (val) => _toggleSubtask(index, val),
                           controlAffinity: ListTileControlAffinity.leading,
                         ),
@@ -669,12 +686,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                       ),
                       const SizedBox(width: 10),
                       Container(
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF8BBD0),
+                        decoration: BoxDecoration(
+                          color: colorScheme.secondaryContainer,
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.add, color: Color(0xFF5D4037)),
+                          icon: Icon(
+                            Icons.add,
+                            color: colorScheme.onSecondaryContainer,
+                          ),
                           onPressed: _addSubtask,
                         ),
                       ),
@@ -682,39 +702,42 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   ),
 
                   const SizedBox(height: 32),
-                  const Divider(color: Color(0xFFFFF59D), thickness: 2),
+                  Divider(color: theme.dividerColor, thickness: 2),
                   const SizedBox(height: 16),
 
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.photo_library, color: Color(0xFFFFCC80)),
-                          SizedBox(width: 8),
+                          Icon(
+                            Icons.photo_library,
+                            color: colorScheme.secondary,
+                          ),
+                          const SizedBox(width: 8),
                           Text(
                             'Fotos y Apuntes 📸',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF5D4037),
+                              color: theme.primaryColor,
                             ),
                           ),
                         ],
                       ),
                       _isUploadingImage
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                color: Colors.brown,
+                                color: theme.primaryColor,
                                 strokeWidth: 2,
                               ),
                             )
                           : IconButton(
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.add_a_photo,
-                                color: Color(0xFF5D4037),
+                                color: theme.primaryColor,
                               ),
                               onPressed: _pickAndUploadImage,
                             ),
@@ -722,9 +745,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   ),
                   const SizedBox(height: 16),
                   if (_currentImages.isEmpty && !_isUploadingImage)
-                    const Text(
+                    Text(
                       'Aún no hay fotos. ¡Sube la primera!',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(
+                        color: theme.textTheme.bodyMedium?.color,
+                      ),
                     ),
                   if (_currentImages.isNotEmpty)
                     GridView.builder(
@@ -789,10 +814,13 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                                             context,
                                                             false,
                                                           ),
-                                                      child: const Text(
+                                                      child: Text(
                                                         'Cancelar',
                                                         style: TextStyle(
-                                                          color: Colors.grey,
+                                                          color: theme
+                                                              .textTheme
+                                                              .bodyMedium
+                                                              ?.color,
                                                         ),
                                                       ),
                                                     ),
@@ -800,17 +828,19 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                                       style:
                                                           ElevatedButton.styleFrom(
                                                             backgroundColor:
-                                                                Colors.red,
+                                                                colorScheme
+                                                                    .error,
                                                           ),
                                                       onPressed: () =>
                                                           Navigator.pop(
                                                             context,
                                                             true,
                                                           ),
-                                                      child: const Text(
+                                                      child: Text(
                                                         'Eliminar',
                                                         style: TextStyle(
-                                                          color: Colors.white,
+                                                          color: colorScheme
+                                                              .onError,
                                                         ),
                                                       ),
                                                     ),
@@ -882,10 +912,10 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                               loadingBuilder: (context, child, p) => p == null
                                   ? child
                                   : Container(
-                                      color: Colors.grey.shade100,
-                                      child: const Center(
+                                      color: theme.cardColor,
+                                      child: Center(
                                         child: CircularProgressIndicator(
-                                          color: Color(0xFFF8BBD0),
+                                          color: colorScheme.secondary,
                                         ),
                                       ),
                                     ),
@@ -896,19 +926,22 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     ),
 
                   const SizedBox(height: 32),
-                  const Divider(color: Color(0xFFFFF59D), thickness: 2),
+                  Divider(color: theme.dividerColor, thickness: 2),
                   const SizedBox(height: 16),
 
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.chat_bubble_outline, color: Color(0xFFC8E6C9)),
-                      SizedBox(width: 8),
+                      Icon(
+                        Icons.chat_bubble_outline,
+                        color: colorScheme.secondary,
+                      ),
+                      const SizedBox(width: 8),
                       Text(
                         'Comentarios 🦋',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF5D4037),
+                          color: theme.primaryColor,
                         ),
                       ),
                     ],
@@ -919,15 +952,19 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     stream: _taskService.getTaskComments(widget.task.id),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
-                        return const Center(
-                          child: CircularProgressIndicator(color: Colors.brown),
+                        return Center(
+                          child: CircularProgressIndicator(
+                            color: theme.primaryColor,
+                          ),
                         );
                       }
                       final comments = snapshot.data!.docs;
                       if (comments.isEmpty) {
-                        return const Text(
+                        return Text(
                           'Sé el primero en comentar algo...',
-                          style: TextStyle(color: Colors.grey),
+                          style: TextStyle(
+                            color: theme.textTheme.bodyMedium?.color,
+                          ),
                         );
                       }
 
@@ -945,13 +982,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: isMe
-                                  ? const Color(0xFFF8BBD0).withOpacity(0.3)
-                                  : Colors.white,
+                                  ? colorScheme.secondaryContainer.withValues(
+                                      alpha: 0.4,
+                                    )
+                                  : theme.cardColor,
                               borderRadius: BorderRadius.circular(15),
                               border: Border.all(
                                 color: isMe
-                                    ? const Color(0xFFF8BBD0)
-                                    : Colors.grey.shade200,
+                                    ? colorScheme.secondary
+                                    : theme.dividerColor,
                               ),
                             ),
                             child: Column(
@@ -963,8 +1002,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                     fontWeight: FontWeight.bold,
                                     fontSize: 12,
                                     color: isMe
-                                        ? const Color(0xFF5D4037)
-                                        : Colors.grey.shade600,
+                                        ? colorScheme.onSecondaryContainer
+                                        : theme.textTheme.bodyMedium?.color,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -986,13 +1025,13 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
               constraints: const BoxConstraints(maxHeight: 150),
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.cardColor,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(20),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.shade300,
+                    color: theme.shadowColor.withValues(alpha: 0.2),
                     blurRadius: 10,
                     offset: const Offset(0, -5),
                   ),
@@ -1003,15 +1042,18 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                 itemBuilder: (context, index) {
                   final member = filteredMembers[index];
                   return ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: Color(0xFFC8E6C9),
-                      child: Icon(Icons.person, color: Color(0xFF5D4037)),
+                    leading: CircleAvatar(
+                      backgroundColor: colorScheme.secondaryContainer,
+                      child: Icon(
+                        Icons.person,
+                        color: colorScheme.onSecondaryContainer,
+                      ),
                     ),
                     title: Text(
                       member['username'],
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF5D4037),
+                        color: theme.primaryColor,
                       ),
                     ),
                     onTap: () => _insertMention(member['username']),
@@ -1023,10 +1065,10 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: theme.cardColor,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.shade200,
+                  color: theme.shadowColor.withValues(alpha: 0.12),
                   blurRadius: 10,
                   offset: const Offset(0, -3),
                 ),
@@ -1045,7 +1087,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                           vertical: 10,
                         ),
                         filled: true,
-                        fillColor: const Color(0xFFFFFDF7),
+                        fillColor: theme.scaffoldBackgroundColor,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(30),
                           borderSide: BorderSide.none,
@@ -1056,12 +1098,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFC8E6C9),
+                    decoration: BoxDecoration(
+                      color: colorScheme.secondaryContainer,
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.send, color: Color(0xFF5D4037)),
+                      icon: Icon(
+                        Icons.send,
+                        color: colorScheme.onSecondaryContainer,
+                      ),
                       onPressed: _sendComment,
                     ),
                   ),

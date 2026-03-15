@@ -41,6 +41,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
   // Función para confirmar la eliminación
   void _confirmDeleteGroup(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     showDialog(
       context: context,
@@ -50,14 +51,17 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
           '¿Eliminar esta sala? ⚠️',
           style: TextStyle(color: theme.primaryColor),
         ),
-        content: const Text(
+        content: Text(
           'Esta acción es permanente. Se borrarán todas las tareas, fotos y comentarios de este grupo.',
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: theme.textTheme.bodyMedium?.color),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: theme.textTheme.bodyMedium?.color),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -79,6 +83,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return DefaultTabController(
       length: 2,
@@ -89,7 +94,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
             widget.group.name,
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: theme.primaryColor,
+              color: theme.appBarTheme.titleTextStyle?.color,
             ),
           ),
           backgroundColor: Colors.transparent,
@@ -97,7 +102,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
           iconTheme: IconThemeData(color: theme.primaryColor),
           actions: [
             IconButton(
-              icon: const Icon(Icons.calendar_month, color: Color(0xFFC8E6C9)),
+              icon: Icon(Icons.calendar_month, color: colorScheme.secondary),
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -106,7 +111,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.people_alt, color: Color(0xFFF8BBD0)),
+              icon: Icon(Icons.people_alt, color: theme.primaryColor),
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -123,8 +128,8 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
           ],
           bottom: TabBar(
             labelColor: theme.primaryColor,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Color(0xFFF8BBD0),
+            unselectedLabelColor: theme.textTheme.bodyMedium?.color,
+            indicatorColor: colorScheme.secondary,
             tabs: const [
               Tab(text: 'Pendientes 🌱'),
               Tab(text: 'Completadas 🌸'),
@@ -145,24 +150,24 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                     },
                     decoration: InputDecoration(
                       hintText: 'Buscar tareas...',
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         Icons.search,
-                        color: Color(0xFFF8BBD0),
+                        color: colorScheme.secondary,
                       ),
                       filled: true,
                       fillColor: theme.cardColor,
                       contentPadding: const EdgeInsets.symmetric(vertical: 0),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
-                        borderSide: const BorderSide(
-                          color: Color(0xFFFFF59D),
+                        borderSide: BorderSide(
+                          color: theme.dividerColor,
                           width: 1,
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
-                        borderSide: const BorderSide(
-                          color: Color(0xFFFFF59D),
+                        borderSide: BorderSide(
+                          color: theme.dividerColor,
                           width: 1,
                         ),
                       ),
@@ -173,9 +178,9 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.filter_list,
-                          color: Colors.grey,
+                          color: theme.textTheme.bodyMedium?.color,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -195,8 +200,10 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                 stream: _taskService.getTasksForGroup(widget.group.id),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(color: Colors.brown),
+                    return Center(
+                      child: CircularProgressIndicator(
+                        color: theme.primaryColor,
+                      ),
                     );
                   }
 
@@ -284,12 +291,12 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                     ),
                   );
                 },
-                backgroundColor: const Color(0xFFC8E6C9),
-                icon: Icon(Icons.add, color: theme.primaryColor),
+                backgroundColor: colorScheme.secondaryContainer,
+                icon: Icon(Icons.add, color: colorScheme.onSecondaryContainer),
                 label: Text(
                   'Nueva Tarea',
                   style: TextStyle(
-                    color: theme.primaryColor,
+                    color: colorScheme.onSecondaryContainer,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -301,6 +308,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
 
   Widget _buildFilterChip(String label, BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final isSelected = _selectedPriority == label;
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
@@ -308,16 +316,18 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
         label: Text(
           label.toUpperCase(),
           style: TextStyle(
-            color: isSelected ? theme.primaryColor : Colors.grey.shade600,
+            color: isSelected
+                ? colorScheme.onSecondaryContainer
+                : theme.textTheme.bodyMedium?.color,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             fontSize: 12,
           ),
         ),
         selected: isSelected,
-        selectedColor: const Color(0xFFFFF59D),
+        selectedColor: colorScheme.secondaryContainer,
         backgroundColor: theme.cardColor,
         side: BorderSide(
-          color: isSelected ? const Color(0xFFFFF59D) : Colors.grey.shade300,
+          color: isSelected ? colorScheme.secondary : theme.dividerColor,
         ),
         onSelected: (bool selected) {
           setState(() {
@@ -335,6 +345,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
     BuildContext context,
   ) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     if (tasks.isEmpty) {
       return Center(
@@ -345,7 +356,10 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
             const SizedBox(height: 20),
             Text(
               emptyMessage,
-              style: const TextStyle(color: Colors.grey, fontSize: 16),
+              style: TextStyle(
+                color: theme.textTheme.bodyMedium?.color,
+                fontSize: 16,
+              ),
             ),
           ],
         ),
@@ -401,7 +415,9 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
               task.title,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: isCompletedList ? Colors.grey : theme.primaryColor,
+                color: isCompletedList
+                    ? theme.textTheme.bodyMedium?.color
+                    : theme.primaryColor,
                 decoration: isCompletedList ? TextDecoration.lineThrough : null,
               ),
             ),
@@ -414,7 +430,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                     task.description,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.grey),
+                    style: TextStyle(color: theme.textTheme.bodyMedium?.color),
                   ),
                 ],
                 const SizedBox(height: 8),
@@ -423,14 +439,16 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                     Icon(
                       Icons.calendar_today,
                       size: 14,
-                      color: Colors.grey.shade500,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(
+                        0.8,
+                      ),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       dateText,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey.shade600,
+                        color: theme.textTheme.bodyMedium?.color,
                       ),
                     ),
                   ],
@@ -439,7 +457,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
             ),
             trailing: Checkbox(
               value: amIDone,
-              activeColor: const Color(0xFFF8BBD0),
+              activeColor: colorScheme.secondary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(5),
               ),
@@ -463,19 +481,21 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context, false),
-                          child: const Text(
+                          child: Text(
                             'Aún me falta',
-                            style: TextStyle(color: Colors.grey),
+                            style: TextStyle(
+                              color: theme.textTheme.bodyMedium?.color,
+                            ),
                           ),
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFF8BBD0),
+                            backgroundColor: colorScheme.secondary,
                           ),
                           onPressed: () => Navigator.pop(context, true),
-                          child: const Text(
+                          child: Text(
                             '¡Sí, lo logré!',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: colorScheme.onSecondary),
                           ),
                         ),
                       ],

@@ -79,7 +79,12 @@ class ThemeNotifier extends ValueNotifier<ThemeData> {
   static final ThemeData _darkTheme = ThemeData(
     brightness: Brightness.dark,
     scaffoldBackgroundColor: const Color(0xFF121212), // Oscuro puro
-    primaryColor: const Color(0xFFF8BBD0), // Mantenemos el rosa como acento
+    primaryColor: const Color.fromARGB(
+      255,
+      236,
+      41,
+      109,
+    ), // Mantenemos el rosa como acento
     cardColor: const Color(0xFF1E1E1E),
     dividerColor: Colors.grey.shade800,
     iconTheme: const IconThemeData(color: Colors.white),
@@ -102,7 +107,7 @@ class ThemeNotifier extends ValueNotifier<ThemeData> {
   static final ThemeData _blueDarkTheme = ThemeData(
     brightness: Brightness.dark,
     scaffoldBackgroundColor: const Color(0xFF0D1B2A), // Azul noche
-    primaryColor: const Color(0xFFE0E1DD),
+    primaryColor: const Color.fromARGB(255, 137, 138, 137),
     cardColor: const Color(0xFF1B263B),
     dividerColor: const Color(0xFF415A77),
     iconTheme: const IconThemeData(color: Color(0xFFE0E1DD)),
@@ -111,7 +116,7 @@ class ThemeNotifier extends ValueNotifier<ThemeData> {
       elevation: 0,
       iconTheme: IconThemeData(color: Color(0xFFE0E1DD)),
       titleTextStyle: TextStyle(
-        color: Color(0xFFE0E1DD),
+        color: Color.fromARGB(255, 97, 97, 97),
         fontSize: 20,
         fontWeight: FontWeight.bold,
       ),

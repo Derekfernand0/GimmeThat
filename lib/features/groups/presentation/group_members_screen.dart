@@ -42,9 +42,12 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
 
   // Cuadro de diálogo para que el Host cambie el rol
   void _showRoleOptions(String targetUid, String currentRole, String username) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFFFFFDF7),
+      backgroundColor: theme.scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
@@ -56,18 +59,18 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
             children: [
               Text(
                 'Gestionar a $username 🦋',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF5D4037),
+                  color: theme.primaryColor,
                 ),
               ),
               const SizedBox(height: 20),
               ListTile(
-                leading: const Icon(Icons.edit_note, color: Color(0xFFF8BBD0)),
+                leading: Icon(Icons.edit_note, color: colorScheme.secondary),
                 title: const Text('Hacer Administrador (Puede crear tareas)'),
                 trailing: currentRole == 'admin'
-                    ? const Icon(Icons.check, color: Colors.green)
+                    ? Icon(Icons.check, color: colorScheme.tertiary)
                     : null,
                 onTap: () async {
                   Navigator.pop(context);
@@ -80,10 +83,13 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.visibility, color: Color(0xFFFFF59D)),
+                leading: Icon(
+                  Icons.visibility,
+                  color: colorScheme.secondaryContainer,
+                ),
                 title: const Text('Hacer Miembro (Solo ver y completar)'),
                 trailing: currentRole == 'member'
-                    ? const Icon(Icons.check, color: Colors.green)
+                    ? Icon(Icons.check, color: colorScheme.tertiary)
                     : null,
                 onTap: () async {
                   Navigator.pop(context);
@@ -95,15 +101,12 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                   _loadMembers();
                 },
               ),
-              const Divider(),
+              Divider(color: theme.dividerColor),
               ListTile(
-                leading: const Icon(
-                  Icons.person_remove,
-                  color: Colors.redAccent,
-                ),
-                title: const Text(
+                leading: Icon(Icons.person_remove, color: colorScheme.error),
+                title: Text(
                   'Expulsar del grupo',
-                  style: TextStyle(color: Colors.redAccent),
+                  style: TextStyle(color: colorScheme.error),
                 ),
                 onTap: () async {
                   Navigator.pop(context);
@@ -120,10 +123,13 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
 
   // --- ¡NUEVA FUNCIÓN! Muestra las tareas pendientes y terminadas del usuario ---
   void _showMemberTasksSummary(String memberUid, String username) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true, // Permite que la ventana sea más alta
-      backgroundColor: const Color(0xFFFFFDF7),
+      backgroundColor: theme.scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
@@ -139,10 +145,10 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                 children: [
                   Text(
                     'Tareas de $username 📋',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF5D4037),
+                      color: theme.primaryColor,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -157,9 +163,9 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                           .snapshots(),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) {
-                          return const Center(
+                          return Center(
                             child: CircularProgressIndicator(
-                              color: Colors.brown,
+                              color: theme.primaryColor,
                             ),
                           );
                         }
@@ -186,61 +192,75 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                           controller: scrollController,
                           children: [
                             // SECCIÓN DE PENDIENTES
-                            const Text(
+                            Text(
                               'Pendientes ⏳',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.redAccent,
+                                color: colorScheme.error,
                               ),
                             ),
                             const SizedBox(height: 8),
                             if (pendingTasks.isEmpty)
-                              const Text(
+                              Text(
                                 '¡No debe nada, está al día! 🌟',
-                                style: TextStyle(color: Colors.grey),
+                                style: TextStyle(
+                                  color: theme.textTheme.bodyMedium?.color,
+                                ),
                               ),
                             ...pendingTasks
                                 .map(
                                   (t) => ListTile(
-                                    leading: const Icon(
+                                    leading: Icon(
                                       Icons.circle_outlined,
-                                      color: Colors.redAccent,
+                                      color: colorScheme.error,
                                     ),
-                                    title: Text(t['title'] ?? 'Tarea'),
+                                    title: Text(
+                                      t['title'] ?? 'Tarea',
+                                      style: TextStyle(
+                                        color: theme.textTheme.bodyLarge?.color,
+                                      ),
+                                    ),
                                   ),
                                 )
                                 .toList(),
 
-                            const Divider(height: 32, thickness: 2),
+                            Divider(
+                              height: 32,
+                              thickness: 2,
+                              color: theme.dividerColor,
+                            ),
 
                             // SECCIÓN DE TERMINADAS
-                            const Text(
+                            Text(
                               'Terminadas ✅',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.green,
+                                color: colorScheme.tertiary,
                               ),
                             ),
                             const SizedBox(height: 8),
                             if (completedTasks.isEmpty)
-                              const Text(
+                              Text(
                                 'Aún no ha terminado nada... 🐢',
-                                style: TextStyle(color: Colors.grey),
+                                style: TextStyle(
+                                  color: theme.textTheme.bodyMedium?.color,
+                                ),
                               ),
                             ...completedTasks
                                 .map(
                                   (t) => ListTile(
-                                    leading: const Icon(
+                                    leading: Icon(
                                       Icons.check_circle,
-                                      color: Colors.green,
+                                      color: colorScheme.tertiary,
                                     ),
                                     title: Text(
                                       t['title'] ?? 'Tarea',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         decoration: TextDecoration.lineThrough,
-                                        color: Colors.grey,
+                                        color:
+                                            theme.textTheme.bodyMedium?.color,
                                       ),
                                     ),
                                   ),
@@ -264,23 +284,25 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
   Widget build(BuildContext context) {
     final myRole = widget.group.roles[currentUserId] ?? 'member';
     final amIHost = myRole == 'host';
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFDF7),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Participantes 🌸',
           style: TextStyle(
-            color: Color(0xFF5D4037),
+            color: theme.appBarTheme.titleTextStyle?.color,
             fontWeight: FontWeight.bold,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF5D4037)),
+        iconTheme: IconThemeData(color: theme.primaryColor),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.brown))
+          ? Center(child: CircularProgressIndicator(color: theme.primaryColor))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _members.length,
@@ -289,20 +311,20 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                 final memberUid = member['uid'];
                 final role = widget.group.roles[memberUid] ?? 'member';
 
-                Color roleColor = Colors.grey.shade300;
+                Color roleColor = theme.dividerColor;
                 String roleName = 'Miembro (Solo ver)';
                 if (role == 'host') {
-                  roleColor = const Color(0xFFF8BBD0);
+                  roleColor = colorScheme.secondary;
                   roleName = 'Host (Dueño)';
                 }
                 if (role == 'admin') {
-                  roleColor = const Color(0xFFFFF59D);
+                  roleColor = colorScheme.secondaryContainer;
                   roleName = 'Administrador';
                 }
 
                 return Card(
                   elevation: 0,
-                  color: Colors.white,
+                  color: theme.cardColor,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                     side: BorderSide(color: roleColor, width: 2),
@@ -314,33 +336,35 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                         _showMemberTasksSummary(memberUid, member['username']),
 
                     leading: CircleAvatar(
-                      backgroundColor: const Color(0xFFC8E6C9),
+                      backgroundColor: colorScheme.secondaryContainer,
                       child: Text(
                         member['username'][0].toUpperCase(),
-                        style: const TextStyle(
-                          color: Color(0xFF5D4037),
+                        style: TextStyle(
+                          color: colorScheme.onSecondaryContainer,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                     title: Text(
                       member['username'],
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF5D4037),
+                        color: theme.primaryColor,
                       ),
                     ),
                     subtitle: Text(
                       roleName,
-                      style: TextStyle(color: Colors.grey.shade600),
+                      style: TextStyle(
+                        color: theme.textTheme.bodyMedium?.color,
+                      ),
                     ),
 
                     // Si YO soy el host y NO soy yo mismo, muestro la tuerca de ajustes de rol
                     trailing: (amIHost && memberUid != currentUserId)
                         ? IconButton(
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.settings,
-                              color: Color(0xFF5D4037),
+                              color: theme.primaryColor,
                             ),
                             onPressed: () => _showRoleOptions(
                               memberUid,

@@ -86,7 +86,7 @@ class _SplashScreenSvgState extends State<SplashScreenSvg>
     _textSlide =
         Tween<Offset>(
           begin: const Offset(-0.5, 0.0),
-          end: const Offset(0.5, 0.0),
+          end: const Offset(0.4, 0.0),
         ).animate(
           CurvedAnimation(
             parent: _controller,
@@ -172,7 +172,7 @@ class _SplashScreenSvgState extends State<SplashScreenSvg>
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Organiza con amabilidad 🦋',
+                          'Organiza con amabilidad',
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: subtitleColor,
                             fontWeight: FontWeight.w600,

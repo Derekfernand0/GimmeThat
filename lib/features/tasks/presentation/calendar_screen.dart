@@ -58,26 +58,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFDF7), // Crema pastel
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Calendario 📅',
           style: TextStyle(
-            color: Color(0xFF5D4037),
+            color: theme.appBarTheme.titleTextStyle?.color,
             fontWeight: FontWeight.bold,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF5D4037)),
+        iconTheme: IconThemeData(color: theme.primaryColor),
       ),
       body: StreamBuilder<List<TaskModel>>(
         stream: _taskService.getTasksForGroup(widget.group.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Colors.brown),
+            return Center(
+              child: CircularProgressIndicator(color: theme.primaryColor),
             );
           }
 
@@ -94,11 +97,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
               Container(
                 margin: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: theme.cardColor,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.shade200,
+                      color: theme.shadowColor.withValues(alpha: 0.12),
                       blurRadius: 10,
                       spreadRadius: 2,
                     ),
@@ -115,35 +118,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
                   // ¡Estilos Pastel Pony! 🦋
                   calendarStyle: CalendarStyle(
-                    todayDecoration: const BoxDecoration(
-                      color: Color(0xFFFFF59D),
+                    todayDecoration: BoxDecoration(
+                      color: colorScheme.secondaryContainer,
                       shape: BoxShape.circle,
                     ), // Amarillo
-                    selectedDecoration: const BoxDecoration(
-                      color: Color(0xFFF8BBD0),
+                    selectedDecoration: BoxDecoration(
+                      color: colorScheme.secondary,
                       shape: BoxShape.circle,
                     ), // Rosa
-                    markerDecoration: const BoxDecoration(
-                      color: Color(0xFFC8E6C9),
+                    markerDecoration: BoxDecoration(
+                      color: theme.primaryColor,
                       shape: BoxShape.circle,
                     ), // Puntos verdes
-                    todayTextStyle: const TextStyle(
-                      color: Color(0xFF5D4037),
+                    todayTextStyle: TextStyle(
+                      color: colorScheme.onSecondaryContainer,
                       fontWeight: FontWeight.bold,
                     ),
-                    selectedTextStyle: const TextStyle(
-                      color: Color(0xFF5D4037),
+                    selectedTextStyle: TextStyle(
+                      color: colorScheme.onSecondary,
                       fontWeight: FontWeight.bold,
+                    ),
+                    defaultTextStyle: TextStyle(
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
+                    weekendTextStyle: TextStyle(
+                      color: theme.textTheme.bodyMedium?.color,
                     ),
                   ),
-                  headerStyle: const HeaderStyle(
+                  headerStyle: HeaderStyle(
                     formatButtonVisible:
                         false, // Ocultamos el botón de "2 weeks"
                     titleCentered: true,
                     titleTextStyle: TextStyle(
-                      color: Color(0xFF5D4037),
+                      color: theme.primaryColor,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                    ),
+                    leftChevronIcon: Icon(
+                      Icons.chevron_left,
+                      color: theme.primaryColor,
+                    ),
+                    rightChevronIcon: Icon(
+                      Icons.chevron_right,
+                      color: theme.primaryColor,
                     ),
                   ),
                   onDaySelected: (selectedDay, focusedDay) {
@@ -161,7 +178,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade700,
+                  color: theme.primaryColor,
                 ),
               ),
               const SizedBox(height: 10),
@@ -173,15 +190,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.nightlight_round,
                               size: 60,
-                              color: Color(0xFFFFF59D),
+                              color: colorScheme.secondary,
                             ),
                             const SizedBox(height: 16),
                             Text(
                               'Día libre. ¡A descansar!',
-                              style: TextStyle(color: Colors.grey.shade500),
+                              style: TextStyle(
+                                color: theme.textTheme.bodyMedium?.color,
+                              ),
                             ),
                           ],
                         ),
@@ -196,11 +215,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           final task = selectedTasks[index];
                           return Card(
                             elevation: 0,
-                            color: Colors.white,
+                            color: theme.cardColor,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
-                              side: const BorderSide(
-                                color: Color(0xFFC8E6C9),
+                              side: BorderSide(
+                                color: colorScheme.secondary,
                                 width: 2,
                               ), // Verde suave
                             ),
@@ -208,18 +227,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             child: ListTile(
                               title: Text(
                                 task.title,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF5D4037),
+                                  color: theme.primaryColor,
                                 ),
                               ),
                               subtitle: Text(
                                 'Prioridad: ${task.priority}',
-                                style: const TextStyle(color: Colors.grey),
+                                style: TextStyle(
+                                  color: theme.textTheme.bodyMedium?.color,
+                                ),
                               ),
-                              trailing: const Icon(
+                              trailing: Icon(
                                 Icons.arrow_forward_ios,
-                                color: Color(0xFFF8BBD0),
+                                color: colorScheme.secondary,
                                 size: 16,
                               ),
                               onTap: () {
