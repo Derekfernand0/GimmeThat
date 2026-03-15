@@ -1,5 +1,5 @@
 name: gimmethat
-description: "A new Flutter project."
+description: "Aplicacion para anotar todas tus tareas, eventos, citas, etc. para que no se te olvide nada, te recuerda siempre que tengas algo pendiente por hacer, ademas de que puedes compartir tus tareas con tus amigos o familiares para que ellos tambien puedan verlas y ayudarte a recordarlas o hacerlas."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
