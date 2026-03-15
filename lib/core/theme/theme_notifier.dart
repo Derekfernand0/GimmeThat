@@ -1,10 +1,15 @@
 // lib/core/theme/theme_notifier.dart
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum AppThemeMode { light, dark, blueDark, custom }
 
 class ThemeNotifier extends ValueNotifier<ThemeData> {
+  static const String _modeKey = 'theme_mode';
+  static const String _customBgKey = 'theme_custom_bg';
+  static const String _customPrimaryKey = 'theme_custom_primary';
+
   // Patrón Singleton para acceder a él desde cualquier pantalla mágicamente
   static final ThemeNotifier _instance = ThemeNotifier._internal();
   factory ThemeNotifier() => _instance;
@@ -20,17 +25,50 @@ class ThemeNotifier extends ValueNotifier<ThemeData> {
   Color get customBg => _customBg;
   Color get customPrimary => _customPrimary;
 
+  Future<void> loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final savedMode = prefs.getString(_modeKey);
+    if (savedMode != null) {
+      _currentMode = AppThemeMode.values.firstWhere(
+        (mode) => mode.name == savedMode,
+        orElse: () => AppThemeMode.light,
+      );
+    }
+
+    final savedCustomBg = prefs.getInt(_customBgKey);
+    if (savedCustomBg != null) {
+      _customBg = Color(savedCustomBg);
+    }
+
+    final savedCustomPrimary = prefs.getInt(_customPrimaryKey);
+    if (savedCustomPrimary != null) {
+      _customPrimary = Color(savedCustomPrimary);
+    }
+
+    _updateTheme();
+  }
+
   void setMode(AppThemeMode mode) {
     _currentMode = mode;
     _updateTheme();
+    _persistTheme();
   }
 
   void setCustomColors(Color bg, Color primary) {
     _customBg = bg;
     _customPrimary = primary;
+    _persistTheme();
     if (_currentMode == AppThemeMode.custom) {
       _updateTheme();
     }
+  }
+
+  Future<void> _persistTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_modeKey, _currentMode.name);
+    await prefs.setInt(_customBgKey, _customBg.toARGB32());
+    await prefs.setInt(_customPrimaryKey, _customPrimary.toARGB32());
   }
 
   void _updateTheme() {

@@ -14,6 +14,8 @@ import 'features/splash/presentation/splash_screen_svg.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await ThemeNotifier().loadTheme();
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // 1. Registramos la función que escucha cuando la app está cerrada
