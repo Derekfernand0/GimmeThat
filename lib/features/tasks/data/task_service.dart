@@ -6,13 +6,12 @@ import '../domain/task_model.dart';
 class TaskService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // 1. Crear una nueva tarea
+  // 1. Crear una nueva tarea o anuncio
   Future<void> createTask(TaskModel task) async {
     final docRef = await _firestore.collection('tasks').add(task.toMap());
 
-    // --- NUEVO: Notificación de Tarea Nueva ---
+    // Solo mandamos notificación Push si es Tarea o Anuncio
     try {
-      // Buscamos el nombre del grupo y del creador
       final groupDoc = await _firestore
           .collection('groups')
           .doc(task.groupId)
@@ -26,17 +25,21 @@ class TaskService {
       final username = userDoc.data()?['username'] ?? 'Alguien';
       final members = List<String>.from(groupDoc.data()?['members'] ?? []);
 
-      // Le avisamos a todos los miembros (menos al que la creó)
       for (var memberId in members) {
         if (memberId != task.createdBy) {
+          // Diferenciamos si es anuncio o tarea para la alerta
+          final isAnuncio = task.type == 'announcement';
+
           await _firestore
               .collection('users')
               .doc(memberId)
               .collection('notifications')
               .add({
-                'type': 'newTask',
-                'title': 'Nueva tarea en $groupName 📝',
-                'message': '$username creó la tarea: "${task.title}"',
+                'type': isAnuncio ? 'newAnnouncement' : 'newTask',
+                'title': isAnuncio
+                    ? '📢 Anuncio en $groupName'
+                    : '📝 Nueva tarea en $groupName',
+                'message': '$username publicó: "${task.title}"',
                 'taskId': docRef.id,
                 'groupId': task.groupId,
                 'taskTitle': task.title,
@@ -47,7 +50,7 @@ class TaskService {
         }
       }
     } catch (e) {
-      print("Error enviando notificaciones de nueva tarea: $e");
+      print("Error enviando notificaciones: $e");
     }
   }
 
@@ -56,7 +59,8 @@ class TaskService {
     return _firestore
         .collection('tasks')
         .where('groupId', isEqualTo: groupId)
-        .orderBy('deadline')
+        // Ya no ordenamos directo en Firebase por deadline, porque los anuncios pueden no tener fecha.
+        // Lo ordenaremos en el lado de la pantalla (Dart) para más poder.
         .snapshots()
         .map((snapshot) {
           return snapshot.docs
@@ -65,7 +69,7 @@ class TaskService {
         });
   }
 
-  // 3. Marcar tarea como completada INDIVIDUALMENTE
+  // 3. Marcar tarea como completada
   Future<void> toggleTaskCompletion(
     String taskId,
     String userId,
@@ -76,7 +80,6 @@ class TaskService {
         'completedBy': FieldValue.arrayUnion([userId]),
       });
 
-      // --- NUEVO: Notificación de Tarea Completada ---
       try {
         final taskDoc = await _firestore.collection('tasks').doc(taskId).get();
         final groupId = taskDoc.data()?['groupId'];
@@ -92,7 +95,6 @@ class TaskService {
         final userDoc = await _firestore.collection('users').doc(userId).get();
         final username = userDoc.data()?['username'] ?? 'Alguien';
 
-        // Avisamos a todos menos al que la completó
         for (var memberId in members) {
           if (memberId != userId) {
             await _firestore
@@ -130,46 +132,38 @@ class TaskService {
     await _firestore.collection('tasks').doc(taskId).update(fieldsToUpdate);
   }
 
-  // 5. Borrar una tarea y sus comentarios
+  // 5. Borrar una tarea
   Future<void> deleteTask(String taskId) async {
     final comments = await _firestore
         .collection('tasks')
         .doc(taskId)
         .collection('comments')
         .get();
-
     final batch = _firestore.batch();
-
     for (final comment in comments.docs) {
       batch.delete(comment.reference);
     }
-
     batch.delete(_firestore.collection('tasks').doc(taskId));
     await batch.commit();
   }
 
-  // 6. Enviar comentario, detectar menciones y avisar al grupo 🦋
+  // 6. Enviar comentario
   Future<void> addComment(
     String taskId,
     String userId,
     String text,
     List<String> mentionedUsernames,
   ) async {
-    // 1. Obtenemos quién está escribiendo
+    // ... [Mantenemos el mismo código tuyo exacto de los comentarios aquí] ...
     final userDoc = await _firestore.collection('users').doc(userId).get();
     final username = userDoc.data()?['username'] ?? 'Usuario';
-
-    // 2. Obtenemos los detalles de la Tarea (para el título y el groupId)
     final taskDoc = await _firestore.collection('tasks').doc(taskId).get();
     final groupId = taskDoc.data()?['groupId'];
     final taskTitle = taskDoc.data()?['title'] ?? 'Tarea';
-
-    // 3. Obtenemos los detalles del Grupo (para el nombre y la lista de integrantes)
     final groupDoc = await _firestore.collection('groups').doc(groupId).get();
     final groupName = groupDoc.data()?['name'] ?? 'Grupo';
     final groupMembers = List<String>.from(groupDoc.data()?['members'] ?? []);
 
-    // 4. Guardamos el comentario
     await _firestore
         .collection('tasks')
         .doc(taskId)
@@ -181,55 +175,41 @@ class TaskService {
           'createdAt': FieldValue.serverTimestamp(),
         });
 
-    // 5. Convertimos los @nombres en IDs reales
     List<String> mentionedUserIds = [];
     for (String mentionedName in mentionedUsernames) {
       final userQuery = await _firestore
           .collection('users')
           .where('username', isEqualTo: mentionedName)
           .get();
-
-      if (userQuery.docs.isNotEmpty) {
+      if (userQuery.docs.isNotEmpty)
         mentionedUserIds.add(userQuery.docs.first.id);
-      }
     }
 
-    // 6. ¡A REPARTIR NOTIFICACIONES A TODO EL GRUPO! 📨
     for (String memberId in groupMembers) {
-      // No te mandes notificación a ti mismo por tu propio comentario
       if (memberId == userId) continue;
-
       bool isMentioned = mentionedUserIds.contains(memberId);
-
-      // Decidimos qué tipo de notificación es
-      String type = isMentioned ? 'mention' : 'newComment';
-      String title = isMentioned
-          ? 'Te mencionaron en $groupName 💬'
-          : 'Nuevo comentario en $groupName 🦋';
-      String message = isMentioned
-          ? '$username te mencionó en: "$taskTitle"'
-          : '$username comentó en: "$taskTitle"';
-
-      // La guardamos en el buzón del usuario
       await _firestore
           .collection('users')
           .doc(memberId)
           .collection('notifications')
           .add({
-            'type': type,
-            'title': title,
-            'message': message,
+            'type': isMentioned ? 'mention' : 'newComment',
+            'title': isMentioned
+                ? 'Te mencionaron en $groupName 💬'
+                : 'Nuevo comentario en $groupName 🦋',
+            'message': isMentioned
+                ? '$username te mencionó en: "$taskTitle"'
+                : '$username comentó en: "$taskTitle"',
             'taskId': taskId,
             'groupId': groupId,
             'taskTitle': taskTitle,
-            'groupName': groupName, // ¡Súper importante para los Deep Links!
+            'groupName': groupName,
             'createdAt': FieldValue.serverTimestamp(),
             'isRead': false,
           });
     }
   }
 
-  // 7. Escuchar los comentarios en tiempo real
   Stream<QuerySnapshot> getTaskComments(String taskId) {
     return _firestore
         .collection('tasks')
@@ -237,5 +217,29 @@ class TaskService {
         .collection('comments')
         .orderBy('createdAt', descending: true)
         .snapshots();
+  }
+
+  // ========================================================
+  // --- NUEVAS FUNCIONES: FIJAR Y DESFIJAR TAREAS/ANUNCIOS ---
+  // ========================================================
+
+  Future<void> pinItem(
+    String taskId,
+    String userId,
+    DateTime? expirationDate,
+  ) async {
+    // Si expirationDate es nulo, significa 'Indefinido'. Si no, guardamos la fecha en la que caduca el pin.
+    await _firestore.collection('tasks').doc(taskId).update({
+      'pinnedBy.$userId': expirationDate != null
+          ? Timestamp.fromDate(expirationDate)
+          : 'indefinite',
+    });
+  }
+
+  Future<void> unpinItem(String taskId, String userId) async {
+    // Eliminamos al usuario de la lista de fijados de esta tarea
+    await _firestore.collection('tasks').doc(taskId).update({
+      'pinnedBy.$userId': FieldValue.delete(),
+    });
   }
 }

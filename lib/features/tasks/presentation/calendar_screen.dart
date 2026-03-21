@@ -36,11 +36,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Map<DateTime, List<TaskModel>> _groupTasksByDate(List<TaskModel> tasks) {
     Map<DateTime, List<TaskModel>> data = {};
     for (var task in tasks) {
-      // Normalizamos la fecha para ignorar la hora y los minutos
+      // ¡CORRECCIÓN! Si el elemento (como un anuncio) no tiene fecha, lo ignoramos en el calendario
+      if (task.deadline == null) continue;
+
+      // Normalizamos la fecha (ahora estamos seguros de que no es null usando !)
       final date = DateTime(
-        task.deadline.year,
-        task.deadline.month,
-        task.deadline.day,
+        task.deadline!.year,
+        task.deadline!.month,
+        task.deadline!.day,
       );
       if (data[date] == null) {
         data[date] = [];
@@ -116,20 +119,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       _getTasksForDay, // Le dice al calendario dónde poner puntos
                   startingDayOfWeek: StartingDayOfWeek.monday,
 
-                  // ¡Estilos Pastel Pony! 🦋
+                  // ¡Estilos! 🦋
                   calendarStyle: CalendarStyle(
                     todayDecoration: BoxDecoration(
                       color: colorScheme.secondaryContainer,
                       shape: BoxShape.circle,
-                    ), // Amarillo
+                    ),
                     selectedDecoration: BoxDecoration(
                       color: colorScheme.secondary,
                       shape: BoxShape.circle,
-                    ), // Rosa
+                    ),
                     markerDecoration: BoxDecoration(
                       color: theme.primaryColor,
                       shape: BoxShape.circle,
-                    ), // Puntos verdes
+                    ),
                     todayTextStyle: TextStyle(
                       color: colorScheme.onSecondaryContainer,
                       fontWeight: FontWeight.bold,
@@ -213,18 +216,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         itemCount: selectedTasks.length,
                         itemBuilder: (context, index) {
                           final task = selectedTasks[index];
+                          final isAnnouncement = task.type == 'announcement';
+
                           return Card(
                             elevation: 0,
                             color: theme.cardColor,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
                               side: BorderSide(
-                                color: colorScheme.secondary,
+                                color: isAnnouncement
+                                    ? Colors.blueAccent
+                                    : colorScheme.secondary,
                                 width: 2,
-                              ), // Verde suave
+                              ),
                             ),
                             margin: const EdgeInsets.only(bottom: 12),
                             child: ListTile(
+                              leading: Icon(
+                                isAnnouncement
+                                    ? Icons.campaign
+                                    : Icons.assignment,
+                                color: isAnnouncement
+                                    ? Colors.blueAccent
+                                    : colorScheme.secondary,
+                              ),
                               title: Text(
                                 task.title,
                                 style: TextStyle(
@@ -233,7 +248,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 ),
                               ),
                               subtitle: Text(
-                                'Prioridad: ${task.priority}',
+                                isAnnouncement
+                                    ? '📢 Anuncio Especial'
+                                    : 'Prioridad: ${task.priority}',
                                 style: TextStyle(
                                   color: theme.textTheme.bodyMedium?.color,
                                 ),

@@ -33,10 +33,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   late List<Map<String, dynamic>> _currentSubtasks;
   late List<String> _currentImages;
-  late DateTime _currentDeadline;
+  DateTime? _currentDeadline;
   bool _isUploadingImage = false;
 
-  // --- VARIABLES PARA MENCIONES ---
   List<Map<String, dynamic>> _groupMembers = [];
   bool _isMentioning = false;
   String _mentionQuery = '';
@@ -47,25 +46,17 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     _currentDeadline = widget.task.deadline;
     _currentSubtasks = List.from(widget.task.subtasks);
     _currentImages = List.from(widget.task.imageUrls);
-
-    // Cargamos los miembros para poder mencionarlos
     _loadGroupMembers();
-
-    // Escuchamos el teclado para buscar el "@"
     _commentController.addListener(_onCommentChanged);
   }
 
-  // Descarga la lista de participantes del grupo
   void _loadGroupMembers() async {
     final members = await _groupService.getGroupMembersDetails(
       widget.group.members,
     );
-    if (mounted) {
-      setState(() => _groupMembers = members);
-    }
+    if (mounted) setState(() => _groupMembers = members);
   }
 
-  // Detecta si estás escribiendo un "@"
   void _onCommentChanged() {
     final text = _commentController.text;
     if (text.isEmpty) {
@@ -73,23 +64,19 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       return;
     }
 
-    // Buscamos la última palabra que se está escribiendo
     final words = text.split(' ');
     final lastWord = words.last;
 
     if (lastWord.startsWith('@')) {
       setState(() {
         _isMentioning = true;
-        _mentionQuery = lastWord
-            .substring(1)
-            .toLowerCase(); // Quitamos el @ para buscar el nombre
+        _mentionQuery = lastWord.substring(1).toLowerCase();
       });
     } else {
       setState(() => _isMentioning = false);
     }
   }
 
-  // Función para confirmar la eliminación de la tarea 🗑️
   Future<void> _confirmDeleteTask() async {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -97,12 +84,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-          'Eliminar tarea',
-          style: TextStyle(color: colorScheme.error),
-        ),
+        title: Text('Eliminar', style: TextStyle(color: colorScheme.error)),
         content: const Text(
-          '¿Estás seguro de que deseas eliminar esta tarea permanentemente? Esta acción no se puede deshacer.',
+          '¿Estás seguro de que deseas eliminar este elemento permanentemente?',
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         actions: [
@@ -131,121 +115,36 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         await _taskService.deleteTask(widget.task.id);
 
         if (mounted) {
-          final messenger = ScaffoldMessenger.of(context);
-          messenger.showSnackBar(
-            const SnackBar(content: Text('La tarea se eliminó correctamente.')),
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Se eliminó correctamente.')),
           );
           await Future<void>.delayed(const Duration(milliseconds: 500));
-          if (mounted) {
-            Navigator.pop(context); // Regresamos a la pantalla anterior
-          }
+          if (mounted) Navigator.pop(context);
         }
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('No se pudo eliminar la tarea: $e')),
-          );
-        }
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('No se pudo eliminar: $e')));
       }
     }
   }
 
-  // Función para confirmar que la TAREA PRINCIPAL está lista ✨
-  Future<void> _confirmCompleteMainTask() async {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    // Verificamos si ya la habías completado antes
-    final isAlreadyCompleted = widget.task.completedBy.contains(currentUserId);
-
-    if (isAlreadyCompleted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ya marcaste esta tarea como lista. ¡Buen trabajo! 🌸'),
-        ),
-      );
-      return;
-    }
-
-    bool? confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          '¡Misión Cumplida! 🎉',
-          style: TextStyle(color: theme.primaryColor),
-        ),
-        content: const Text(
-          '¿Estás seguro de que quieres marcar toda esta tarea como completada?',
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Aún me falta',
-              style: TextStyle(color: theme.textTheme.bodyMedium?.color),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.secondary,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              '¡Sí, lo logré!',
-              style: TextStyle(color: colorScheme.onSecondary),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      // Agregamos al usuario actual a la lista de completedBy
-      List<String> updatedCompletedBy = List.from(widget.task.completedBy);
-      updatedCompletedBy.add(currentUserId);
-
-      await _taskService.updateTaskFields(widget.task.id, {
-        'completedBy': updatedCompletedBy,
-        'isCompleted': true, // Si quieres, también cambiamos el estado global
-      });
-
-      if (mounted) {
-        setState(() {
-          // Actualizamos la vista localmente sin necesidad de recargar de Firebase
-          widget.task.completedBy.add(currentUserId);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Felicidades por terminar tu tarea! 🦋'),
-          ),
-        );
-      }
-    }
-  }
-
-  // Agrega el nombre seleccionado a la caja de texto
   void _insertMention(String username) {
     final text = _commentController.text;
     final words = text.split(' ');
-    words.removeLast(); // Borramos lo que estaba escribiendo
-    words.add(
-      '@$username ',
-    ); // Insertamos el nombre completo con un espacio al final
+    words.removeLast();
+    words.add('@$username ');
 
     _commentController.text = words.join(' ');
-    // Movemos el cursor al final del texto
     _commentController.selection = TextSelection.fromPosition(
       TextPosition(offset: _commentController.text.length),
     );
-
     setState(() => _isMentioning = false);
   }
 
-  // Función para convertir los IDs en nombres legibles 🦋
   String _getCompletedNames() {
     if (widget.task.completedBy.isEmpty) return 'Nadie aún 🌱';
-
     List<String> names = [];
     for (var uid in widget.task.completedBy) {
       final member = _groupMembers.firstWhere(
@@ -257,14 +156,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     return names.join(', ');
   }
 
-  // Función para abrir el calendario y editar la fecha 📅
+  // --- NUEVA EDICIÓN CON HORA ---
   Future<void> _editDeadline() async {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    // 1. Pedimos la fecha
     DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: _currentDeadline,
+      initialDate: _currentDeadline ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
       builder: (context, child) {
@@ -280,25 +180,53 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       },
     );
 
-    if (pickedDate != null) {
-      setState(() {
-        _currentDeadline = pickedDate;
-      });
-      await _taskService.updateTaskFields(widget.task.id, {
-        'deadline': Timestamp.fromDate(pickedDate),
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('¡Fecha límite actualizada! ⏰')),
+    // 2. Pedimos la hora si la fecha fue seleccionada
+    if (pickedDate != null && mounted) {
+      TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: _currentDeadline != null
+            ? TimeOfDay.fromDateTime(_currentDeadline!)
+            : TimeOfDay.now(),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: colorScheme,
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(
+                  foregroundColor: theme.primaryColor,
+                ),
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
+
+      if (pickedTime != null) {
+        final finalDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
         );
+
+        setState(() => _currentDeadline = finalDateTime);
+        await _taskService.updateTaskFields(widget.task.id, {
+          'deadline': Timestamp.fromDate(finalDateTime),
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('¡Fecha y hora actualizadas! ⏰')),
+          );
+        }
       }
     }
   }
 
-  // Esta función pinta los @nombres de color azul
   Widget _buildCommentText(String text) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final words = text.split(' ');
     return Wrap(
       children: words.map((word) {
@@ -316,7 +244,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     );
   }
 
-  // --- FUNCIONES DE TAREAS Y SUBTAREAS ---
   void _addSubtask() async {
     if (_subtaskController.text.trim().isEmpty) return;
     final newSubtask = {
@@ -332,13 +259,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     });
   }
 
-  // Subtareas CON confirmación ✅
   Future<void> _toggleSubtask(int index, bool? value) async {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     if (value == null) return;
-
     if (value == true) {
       bool? confirm = await showDialog<bool>(
         context: context,
@@ -374,7 +299,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           ],
         ),
       );
-
       if (confirm != true) return;
     }
 
@@ -382,15 +306,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       List<String> completedBy = List<String>.from(
         _currentSubtasks[index]['completedBy'] ?? [],
       );
-
       if (value == true) {
-        if (!completedBy.contains(currentUserId)) {
+        if (!completedBy.contains(currentUserId))
           completedBy.add(currentUserId);
-        }
       } else {
         completedBy.remove(currentUserId);
       }
-
       _currentSubtasks[index]['completedBy'] = completedBy;
     });
 
@@ -399,7 +320,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     });
   }
 
-  // --- FUNCIÓN MEJORADA: Comentarios y Menciones Globales 🦋 ---
   void _sendComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
@@ -409,16 +329,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
     List<String> mentionedUsernames = [];
     final words = text.split(' ');
-
     final containsEveryone = words.any(
       (w) => w.toLowerCase() == '@everyone' || w.toLowerCase() == '@todos',
     );
 
     if (containsEveryone) {
       for (var member in _groupMembers) {
-        if (member['uid'] != currentUserId) {
+        if (member['uid'] != currentUserId)
           mentionedUsernames.add(member['username']);
-        }
       }
     } else {
       for (var word in words) {
@@ -427,7 +345,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         }
       }
     }
-
     await _taskService.addComment(
       widget.task.id,
       currentUserId,
@@ -442,22 +359,23 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       imageQuality: 70,
     );
     if (pickedFile == null) return;
+
     setState(() => _isUploadingImage = true);
     String? downloadUrl = await _storageService.uploadTaskImage(
       widget.task.id,
       File(pickedFile.path),
     );
+
     if (downloadUrl != null) {
       setState(() => _currentImages.add(downloadUrl));
       await _taskService.updateTaskFields(widget.task.id, {
         'imageUrls': _currentImages,
       });
     } else {
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error al subir la imagen 😔')),
         );
-      }
     }
     setState(() => _isUploadingImage = false);
   }
@@ -467,30 +385,32 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // --- NUEVO: CALCULAMOS LOS PERMISOS ---
     final myRole = widget.group.roles[currentUserId] ?? 'member';
     final canEdit = myRole == 'host' || myRole == 'admin';
-    // --------------------------------------
 
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final deadlineDate = DateTime(
-      _currentDeadline.year,
-      _currentDeadline.month,
-      _currentDeadline.day,
-    );
-    final isDeadlineOverdue = deadlineDate.isBefore(today);
-    final formattedDeadline =
-        '${_currentDeadline.day.toString().padLeft(2, '0')}/${_currentDeadline.month.toString().padLeft(2, '0')}/${_currentDeadline.year}';
-    // Creamos una lista temporal que incluya el comodín de everyone
+    bool isDeadlineOverdue = false;
+    String formattedDeadline = 'Sin límite';
+
+    // --- CÁLCULO DE FECHA Y HORA ---
+    if (_currentDeadline != null) {
+      final now = DateTime.now();
+      isDeadlineOverdue = _currentDeadline!.isBefore(now);
+
+      final d = _currentDeadline!;
+      final day = d.day.toString().padLeft(2, '0');
+      final month = d.month.toString().padLeft(2, '0');
+      final year = d.year;
+      final hour = d.hour.toString().padLeft(2, '0');
+      final minute = d.minute.toString().padLeft(2, '0');
+      formattedDeadline = '$day/$month/$year a las $hour:$minute';
+    }
+
     final List<Map<String, dynamic>> allMentionables = [
-      {'username': 'everyone', 'uid': 'todos_id'}, // ¡El comodín mágico!
+      {'username': 'everyone', 'uid': 'todos_id'},
       ..._groupMembers,
     ];
-
     final filteredMembers = allMentionables.where((m) {
       final name = m['username'].toString().toLowerCase();
-      // Filtramos para que no te salgas tú mismo en la lista
       return name.contains(_mentionQuery) && m['uid'] != currentUserId;
     }).toList();
 
@@ -508,7 +428,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: theme.primaryColor),
         actions: [
-          // ¡SOLO SI PUEDE EDITAR SE MUESTRA LA BASURA!
           if (canEdit)
             IconButton(
               icon: Icon(Icons.delete_outline, color: colorScheme.error),
@@ -536,13 +455,13 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   Row(
                     children: [
                       Icon(
-                        Icons.calendar_today,
+                        Icons.access_time,
                         size: 16,
                         color: theme.textTheme.bodyMedium?.color,
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'Para el: $formattedDeadline',
+                        formattedDeadline,
                         style: TextStyle(
                           fontSize: 14,
                           color: isDeadlineOverdue
@@ -552,7 +471,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                         ),
                       ),
                       const Spacer(),
-                      // ¡SOLO SI PUEDE EDITAR SE MUESTRA EL BOTÓN DE CAMBIAR FECHA!
                       if (canEdit)
                         TextButton.icon(
                           onPressed: _editDeadline,
@@ -569,25 +487,32 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.stars, size: 18, color: colorScheme.secondary),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Completada por: ${_getCompletedNames()}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: theme.textTheme.bodyMedium?.color,
-                            fontStyle: FontStyle.italic,
+
+                  if (widget.task.type == 'task') ...[
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.stars,
+                          size: 18,
+                          color: colorScheme.secondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Completada por: ${_getCompletedNames()}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: theme.textTheme.bodyMedium?.color,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
                   if (widget.task.description.isNotEmpty) ...[
                     Container(
                       width: double.infinity,
@@ -608,102 +533,105 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     const SizedBox(height: 24),
                   ],
 
-                  Row(
-                    children: [
-                      Icon(Icons.checklist_rtl, color: colorScheme.secondary),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Pasos para lograrlo 🌱',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: theme.primaryColor,
+                  if (widget.task.type == 'task') ...[
+                    Row(
+                      children: [
+                        Icon(Icons.checklist_rtl, color: colorScheme.secondary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Pasos para lograrlo 🌱',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: theme.primaryColor,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _currentSubtasks.length,
-                    itemBuilder: (context, index) {
-                      final subtask = _currentSubtasks[index];
-                      final List<dynamic> completedBy =
-                          subtask['completedBy'] ?? [];
-                      final bool isDoneByMe =
-                          completedBy.contains(currentUserId) ||
-                          (subtask['isDone'] == true);
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _currentSubtasks.length,
+                      itemBuilder: (context, index) {
+                        final subtask = _currentSubtasks[index];
+                        final List<dynamic> completedBy =
+                            subtask['completedBy'] ?? [];
+                        final bool isDoneByMe =
+                            completedBy.contains(currentUserId) ||
+                            (subtask['isDone'] == true);
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: theme.cardColor,
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: theme.shadowColor.withValues(alpha: 0.08),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: CheckboxListTile(
-                          title: Text(
-                            subtask['title'],
-                            style: TextStyle(
-                              color: isDoneByMe
-                                  ? theme.textTheme.bodyMedium?.color
-                                  : theme.primaryColor,
-                              decoration: isDoneByMe
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                            ),
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: [
+                              BoxShadow(
+                                color: theme.shadowColor.withValues(
+                                  alpha: 0.08,
+                                ),
+                                blurRadius: 4,
+                              ),
+                            ],
                           ),
-                          value: isDoneByMe,
-                          activeColor: colorScheme.secondaryContainer,
-                          checkColor: colorScheme.onSecondaryContainer,
-                          onChanged: (val) => _toggleSubtask(index, val),
-                          controlAffinity: ListTileControlAffinity.leading,
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _subtaskController,
-                          decoration: const InputDecoration(
-                            hintText: 'Ej. Hacer portada...',
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 14,
+                          child: CheckboxListTile(
+                            title: Text(
+                              subtask['title'],
+                              style: TextStyle(
+                                color: isDoneByMe
+                                    ? theme.textTheme.bodyMedium?.color
+                                    : theme.primaryColor,
+                                decoration: isDoneByMe
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
                             ),
+                            value: isDoneByMe,
+                            activeColor: colorScheme.secondaryContainer,
+                            checkColor: colorScheme.onSecondaryContainer,
+                            onChanged: (val) => _toggleSubtask(index, val),
+                            controlAffinity: ListTileControlAffinity.leading,
                           ),
-                          onSubmitted: (_) => _addSubtask(),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: colorScheme.secondaryContainer,
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.add,
-                            color: colorScheme.onSecondaryContainer,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _subtaskController,
+                            decoration: const InputDecoration(
+                              hintText: 'Ej. Hacer portada...',
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 14,
+                              ),
+                            ),
+                            onSubmitted: (_) => _addSubtask(),
                           ),
-                          onPressed: _addSubtask,
                         ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 32),
-                  Divider(color: theme.dividerColor, thickness: 2),
-                  const SizedBox(height: 16),
+                        const SizedBox(width: 10),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: colorScheme.secondaryContainer,
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.add,
+                              color: colorScheme.onSecondaryContainer,
+                            ),
+                            onPressed: _addSubtask,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                    Divider(color: theme.dividerColor, thickness: 2),
+                    const SizedBox(height: 16),
+                  ],
 
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -785,118 +713,105 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                         height: double.infinity,
                                       ),
                                     ),
+                                    if (canEdit)
+                                      Positioned(
+                                        top: 40,
+                                        right: 20,
+                                        child: IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            color: Colors.redAccent,
+                                            size: 30,
+                                          ),
+                                          onPressed: () async {
+                                            bool?
+                                            confirm = await showDialog<bool>(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                title: const Text(
+                                                  'Borrar Foto',
+                                                ),
+                                                content: const Text(
+                                                  '¿Seguro que quieres eliminar esta foto?',
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                          context,
+                                                          false,
+                                                        ),
+                                                    child: const Text(
+                                                      'Cancelar',
+                                                    ),
+                                                  ),
+                                                  ElevatedButton(
+                                                    style:
+                                                        ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                              colorScheme.error,
+                                                        ),
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                          context,
+                                                          true,
+                                                        ),
+                                                    child: Text(
+                                                      'Eliminar',
+                                                      style: TextStyle(
+                                                        color:
+                                                            colorScheme.onError,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            if (confirm == true) {
+                                              try {
+                                                await _storageService
+                                                    .deleteImageByUrl(imageUrl);
+                                                setState(
+                                                  () => _currentImages.removeAt(
+                                                    index,
+                                                  ),
+                                                );
+                                                await _taskService
+                                                    .updateTaskFields(
+                                                      widget.task.id,
+                                                      {
+                                                        'imageUrls':
+                                                            _currentImages,
+                                                      },
+                                                    );
+                                                if (mounted)
+                                                  Navigator.pop(context);
+                                              } catch (e) {
+                                                if (mounted)
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        'Error: $e',
+                                                      ),
+                                                    ),
+                                                  );
+                                              }
+                                            }
+                                          },
+                                        ),
+                                      ),
                                     Positioned(
                                       top: 40,
-                                      right: 20,
-                                      child: Row(
-                                        children: [
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.delete,
-                                              color: Colors.redAccent,
-                                              size: 30,
-                                            ),
-                                            onPressed: () async {
-                                              bool?
-                                              confirm = await showDialog<bool>(
-                                                context: context,
-                                                builder: (context) => AlertDialog(
-                                                  title: const Text(
-                                                    'Borrar Foto',
-                                                  ),
-                                                  content: const Text(
-                                                    '¿Seguro que quieres eliminar esta foto de la tarea?',
-                                                  ),
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                            context,
-                                                            false,
-                                                          ),
-                                                      child: Text(
-                                                        'Cancelar',
-                                                        style: TextStyle(
-                                                          color: theme
-                                                              .textTheme
-                                                              .bodyMedium
-                                                              ?.color,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    ElevatedButton(
-                                                      style:
-                                                          ElevatedButton.styleFrom(
-                                                            backgroundColor:
-                                                                colorScheme
-                                                                    .error,
-                                                          ),
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                            context,
-                                                            true,
-                                                          ),
-                                                      child: Text(
-                                                        'Eliminar',
-                                                        style: TextStyle(
-                                                          color: colorScheme
-                                                              .onError,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              );
-
-                                              if (confirm == true) {
-                                                try {
-                                                  await _storageService
-                                                      .deleteImageByUrl(
-                                                        imageUrl,
-                                                      );
-                                                  setState(() {
-                                                    _currentImages.removeAt(
-                                                      index,
-                                                    );
-                                                  });
-                                                  await _taskService
-                                                      .updateTaskFields(
-                                                        widget.task.id,
-                                                        {
-                                                          'imageUrls':
-                                                              _currentImages,
-                                                        },
-                                                      );
-                                                  if (mounted) {
-                                                    Navigator.pop(context);
-                                                  }
-                                                } catch (e) {
-                                                  if (mounted) {
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                          'No se pudo borrar la foto: $e',
-                                                        ),
-                                                      ),
-                                                    );
-                                                  }
-                                                }
-                                              }
-                                            },
-                                          ),
-                                          const SizedBox(width: 10),
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.close,
-                                              color: Colors.white,
-                                              size: 30,
-                                            ),
-                                            onPressed: () =>
-                                                Navigator.pop(context),
-                                          ),
-                                        ],
+                                      left: 20,
+                                      child: IconButton(
+                                        icon: const Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: 30,
+                                        ),
+                                        onPressed: () => Navigator.pop(context),
                                       ),
                                     ),
                                   ],
@@ -951,22 +866,20 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   StreamBuilder<QuerySnapshot>(
                     stream: _taskService.getTaskComments(widget.task.id),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
+                      if (!snapshot.hasData)
                         return Center(
                           child: CircularProgressIndicator(
                             color: theme.primaryColor,
                           ),
                         );
-                      }
                       final comments = snapshot.data!.docs;
-                      if (comments.isEmpty) {
+                      if (comments.isEmpty)
                         return Text(
                           'Sé el primero en comentar algo...',
                           style: TextStyle(
                             color: theme.textTheme.bodyMedium?.color,
                           ),
                         );
-                      }
 
                       return ListView.builder(
                         shrinkWrap: true,
@@ -1080,6 +993,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   Expanded(
                     child: TextField(
                       controller: _commentController,
+                      maxLines: null,
                       decoration: InputDecoration(
                         hintText: 'Escribe un comentario o usa @...',
                         contentPadding: const EdgeInsets.symmetric(
@@ -1093,7 +1007,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                           borderSide: BorderSide.none,
                         ),
                       ),
-                      maxLines: null,
                     ),
                   ),
                   const SizedBox(width: 8),
