@@ -496,12 +496,13 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
               child: StreamBuilder<List<TaskModel>>(
                 stream: _taskService.getTasksForGroup(widget.group.id),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting)
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(
                       child: CircularProgressIndicator(
                         color: theme.primaryColor,
                       ),
                     );
+                  }
 
                   final allTasks = snapshot.data ?? [];
                   final now = DateTime.now();
@@ -518,8 +519,9 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                     if (task.deadline != null) {
                       // Si es anuncio, se oculta en cuanto pasa la fecha/hora exacta
                       if (task.type == 'announcement' &&
-                          task.deadline!.isBefore(now))
+                          task.deadline!.isBefore(now)) {
                         return false;
+                      }
 
                       // Si es tarea, le damos 60 días de gracia
                       final taskDate = DateTime(
@@ -529,8 +531,9 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                       );
                       if (task.type == 'task' &&
                           today.difference(taskDate).inDays > 60 &&
-                          !task.completedBy.contains(currentUserId))
+                          !task.completedBy.contains(currentUserId)) {
                         return false;
+                      }
                     }
 
                     return matchesSearch && matchesPriority;

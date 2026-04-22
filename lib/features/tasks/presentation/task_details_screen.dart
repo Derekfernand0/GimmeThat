@@ -122,10 +122,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           if (mounted) Navigator.pop(context);
         }
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('No se pudo eliminar: $e')));
+        }
       }
     }
   }
@@ -307,8 +308,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         _currentSubtasks[index]['completedBy'] ?? [],
       );
       if (value == true) {
-        if (!completedBy.contains(currentUserId))
+        if (!completedBy.contains(currentUserId)) {
           completedBy.add(currentUserId);
+        }
       } else {
         completedBy.remove(currentUserId);
       }
@@ -335,8 +337,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
     if (containsEveryone) {
       for (var member in _groupMembers) {
-        if (member['uid'] != currentUserId)
+        if (member['uid'] != currentUserId) {
           mentionedUsernames.add(member['username']);
+        }
       }
     } else {
       for (var word in words) {
@@ -372,10 +375,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         'imageUrls': _currentImages,
       });
     } else {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error al subir la imagen 😔')),
         );
+      }
     }
     setState(() => _isUploadingImage = false);
   }
@@ -784,10 +788,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                                             _currentImages,
                                                       },
                                                     );
-                                                if (mounted)
+                                                if (mounted) {
                                                   Navigator.pop(context);
+                                                }
                                               } catch (e) {
-                                                if (mounted)
+                                                if (mounted) {
                                                   ScaffoldMessenger.of(
                                                     context,
                                                   ).showSnackBar(
@@ -797,6 +802,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                                       ),
                                                     ),
                                                   );
+                                                }
                                               }
                                             }
                                           },
@@ -866,20 +872,22 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   StreamBuilder<QuerySnapshot>(
                     stream: _taskService.getTaskComments(widget.task.id),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData)
+                      if (!snapshot.hasData) {
                         return Center(
                           child: CircularProgressIndicator(
                             color: theme.primaryColor,
                           ),
                         );
+                      }
                       final comments = snapshot.data!.docs;
-                      if (comments.isEmpty)
+                      if (comments.isEmpty) {
                         return Text(
                           'Sé el primero en comentar algo...',
                           style: TextStyle(
                             color: theme.textTheme.bodyMedium?.color,
                           ),
                         );
+                      }
 
                       return ListView.builder(
                         shrinkWrap: true,

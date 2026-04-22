@@ -5,8 +5,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 
-import 'features/auth/presentation/auth_gate.dart';
-import 'core/theme/app_theme.dart';
 import 'core/utils/notification_service.dart';
 import 'core/theme/theme_notifier.dart';
 import 'features/splash/presentation/splash_screen_svg.dart';

@@ -181,8 +181,9 @@ class TaskService {
           .collection('users')
           .where('username', isEqualTo: mentionedName)
           .get();
-      if (userQuery.docs.isNotEmpty)
+      if (userQuery.docs.isNotEmpty) {
         mentionedUserIds.add(userQuery.docs.first.id);
+      }
     }
 
     for (String memberId in groupMembers) {

@@ -208,22 +208,20 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                                   color: theme.textTheme.bodyMedium?.color,
                                 ),
                               ),
-                            ...pendingTasks
-                                .map(
-                                  (t) => ListTile(
-                                    leading: Icon(
-                                      Icons.circle_outlined,
-                                      color: colorScheme.error,
-                                    ),
-                                    title: Text(
-                                      t['title'] ?? 'Tarea',
-                                      style: TextStyle(
-                                        color: theme.textTheme.bodyLarge?.color,
-                                      ),
-                                    ),
+                            ...pendingTasks.map(
+                              (t) => ListTile(
+                                leading: Icon(
+                                  Icons.circle_outlined,
+                                  color: colorScheme.error,
+                                ),
+                                title: Text(
+                                  t['title'] ?? 'Tarea',
+                                  style: TextStyle(
+                                    color: theme.textTheme.bodyLarge?.color,
                                   ),
-                                )
-                                .toList(),
+                                ),
+                              ),
+                            ),
 
                             Divider(
                               height: 32,
@@ -248,24 +246,21 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                                   color: theme.textTheme.bodyMedium?.color,
                                 ),
                               ),
-                            ...completedTasks
-                                .map(
-                                  (t) => ListTile(
-                                    leading: Icon(
-                                      Icons.check_circle,
-                                      color: colorScheme.tertiary,
-                                    ),
-                                    title: Text(
-                                      t['title'] ?? 'Tarea',
-                                      style: TextStyle(
-                                        decoration: TextDecoration.lineThrough,
-                                        color:
-                                            theme.textTheme.bodyMedium?.color,
-                                      ),
-                                    ),
+                            ...completedTasks.map(
+                              (t) => ListTile(
+                                leading: Icon(
+                                  Icons.check_circle,
+                                  color: colorScheme.tertiary,
+                                ),
+                                title: Text(
+                                  t['title'] ?? 'Tarea',
+                                  style: TextStyle(
+                                    decoration: TextDecoration.lineThrough,
+                                    color: theme.textTheme.bodyMedium?.color,
                                   ),
-                                )
-                                .toList(),
+                                ),
+                              ),
+                            ),
                           ],
                         );
                       },

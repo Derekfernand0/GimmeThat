@@ -191,8 +191,9 @@ class _GroupsScreenState extends State<GroupsScreen>
                         ],
                       ),
                     );
-                    if (confirm == true)
+                    if (confirm == true) {
                       await _groupService.removeMember(group.id, currentUserId);
+                    }
                   },
                 ),
 
@@ -392,8 +393,9 @@ class _GroupsScreenState extends State<GroupsScreen>
       body: StreamBuilder<List<GroupModel>>(
         stream: _groupService.getUserGroupsStream(currentUserId),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting)
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
+          }
           final groups = snapshot.data ?? [];
           if (groups.isEmpty) {
             return Center(

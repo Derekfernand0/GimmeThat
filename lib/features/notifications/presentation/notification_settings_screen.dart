@@ -254,7 +254,7 @@ class _NotificationSettingsScreenState
     ThemeData theme,
   ) {
     return SwitchListTile(
-      activeColor: theme.primaryColor,
+      activeThumbColor: theme.primaryColor,
       title: Text(
         title,
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
