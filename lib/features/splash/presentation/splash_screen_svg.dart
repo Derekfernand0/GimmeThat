@@ -73,8 +73,8 @@ class _SplashScreenSvgState extends State<SplashScreenSvg>
       ),
     );
 
-    // 3. Mitosis: El logo se mueve a la izquierda
-    _logoSlide = Tween<Offset>(begin: Offset.zero, end: const Offset(-0.8, 0.0))
+    // 3. Mitosis: El logo se mueve más a la izquierda para evitar choques en PC
+    _logoSlide = Tween<Offset>(begin: Offset.zero, end: const Offset(-1.2, 0.0))
         .animate(
           CurvedAnimation(
             parent: _controller,
@@ -82,11 +82,11 @@ class _SplashScreenSvgState extends State<SplashScreenSvg>
           ),
         );
 
-    // 4. Mitosis: El texto sale de ATRÁS del logo hacia la derecha
+    // 4. Mitosis: El texto sale más hacia la derecha
     _textSlide =
         Tween<Offset>(
           begin: const Offset(-0.5, 0.0),
-          end: const Offset(0.4, 0.0),
+          end: const Offset(0.6, 0.0), // Aumentamos la distancia final a 0.6
         ).animate(
           CurvedAnimation(
             parent: _controller,
@@ -112,8 +112,8 @@ class _SplashScreenSvgState extends State<SplashScreenSvg>
           context,
           PageRouteBuilder(
             transitionDuration: const Duration(milliseconds: 800),
-            pageBuilder: (_, __, ___) => const AuthGate(),
-            transitionsBuilder: (_, animation, __, child) {
+            pageBuilder: (_, _, _) => const AuthGate(),
+            transitionsBuilder: (_, animation, _, child) {
               return FadeTransition(opacity: animation, child: child);
             },
           ),
@@ -138,7 +138,7 @@ class _SplashScreenSvgState extends State<SplashScreenSvg>
     final titleColor = isDark ? Colors.white : const Color(0xFF5D4037);
     final subtitleColor = isDark
         ? Colors.white70
-        : const Color(0xFF5D4037).withOpacity(0.8);
+        : const Color(0xFF5D4037).withValues(alpha: 0.8);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -185,7 +185,7 @@ class _SplashScreenSvgState extends State<SplashScreenSvg>
                             Text(
                               'Preparando magia...',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: subtitleColor.withOpacity(0.5),
+                                color: subtitleColor.withValues(alpha: 0.5),
                                 fontStyle: FontStyle.italic,
                               ),
                             ),
@@ -312,7 +312,7 @@ class _BlinkingDotsState extends State<_BlinkingDots>
       height: 6,
       width: 6,
       decoration: BoxDecoration(
-        color: widget.color.withOpacity(opacity),
+        color: widget.color.withValues(alpha: opacity),
         shape: BoxShape.circle,
       ),
     );

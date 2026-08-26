@@ -309,8 +309,9 @@ class NotificationsScreen extends StatelessWidget {
                     ),
                     onTap: () {
                       _markAsRead(doc.id, currentUserId);
-                      if (data['taskId'] != null)
+                      if (data['taskId'] != null) {
                         _navigateToTask(context, data);
+                      }
                     },
                   ),
                 ),

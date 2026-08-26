@@ -64,7 +64,9 @@ class AppTheme {
           backgroundColor: pastelYellow,
           foregroundColor: darkText, // Color del texto dentro del botón
           elevation: 2, // Sombra súper suave
-          shadowColor: softPink.withOpacity(0.5), // Sombra con un toque rosado
+          shadowColor: softPink.withValues(
+            alpha: 0.5,
+          ), // Sombra con un toque rosado
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(30), // Botones muy redondeados

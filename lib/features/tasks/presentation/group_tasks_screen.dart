@@ -690,13 +690,13 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                     : Colors.blue.shade50)
               : theme.cardColor,
           elevation: isPinned ? 4 : 2,
-          shadowColor: taskColor.withOpacity(0.4),
+          shadowColor: taskColor.withValues(alpha: 0.4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: BorderSide(
               color: isCompletedList
                   ? Colors.grey.shade300
-                  : taskColor.withOpacity(isPinned ? 1.0 : 0.5),
+                  : taskColor.withValues(alpha: isPinned ? 1.0 : 0.5),
               width: isPinned ? 3 : 2,
             ),
           ),
@@ -715,7 +715,7 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                   decoration: BoxDecoration(
                     color: isCompletedList
                         ? Colors.grey.shade400
-                        : taskColor.withOpacity(0.2),
+                        : taskColor.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -765,8 +765,8 @@ class _GroupTasksScreenState extends State<GroupTasksScreen> {
                       Icon(
                         Icons.access_time,
                         size: 14,
-                        color: theme.textTheme.bodyMedium?.color?.withOpacity(
-                          0.8,
+                        color: theme.textTheme.bodyMedium?.color?.withValues(
+                          alpha: 0.8,
                         ),
                       ),
                       const SizedBox(width: 4),
