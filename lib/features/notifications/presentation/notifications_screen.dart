@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// ¡Importamos los modelos y pantallas necesarias para viajar a la tarea!
 import '../../tasks/domain/task_model.dart';
 import '../../groups/domain/group_model.dart';
 import '../../tasks/presentation/task_details_screen.dart';
@@ -11,7 +10,7 @@ import '../../tasks/presentation/task_details_screen.dart';
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
-  // Función para marcar una notificación como leída
+  // Función para marcar UNA notificación como leída
   void _markAsRead(String docId, String userId) {
     FirebaseFirestore.instance
         .collection('users')
@@ -21,7 +20,7 @@ class NotificationsScreen extends StatelessWidget {
         .update({'isRead': true});
   }
 
-  // Función para borrar la notificación
+  // Función para borrar UNA notificación
   void _deleteNotification(String docId, String userId) {
     FirebaseFirestore.instance
         .collection('users')
@@ -31,7 +30,82 @@ class NotificationsScreen extends StatelessWidget {
         .delete();
   }
 
-  // --- NUEVA FUNCIÓN MÁGICA: Navegar a la Tarea (Deep Linking) 🚀 ---
+  // --- NUEVO: Marcar TODAS como leídas de un golpe (Batch) ---
+  Future<void> _markAllAsRead(String userId, BuildContext context) async {
+    final batch = FirebaseFirestore.instance.batch();
+    final unreadDocs = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('notifications')
+        .where('isRead', isEqualTo: false)
+        .get();
+
+    if (unreadDocs.docs.isEmpty) return;
+
+    for (var doc in unreadDocs.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+
+    await batch.commit();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Todas las alertas marcadas como leídas ✅'),
+        ),
+      );
+    }
+  }
+
+  // --- NUEVO: Borrar TODAS las notificaciones (Batch) ---
+  Future<void> _deleteAllNotifications(
+    String userId,
+    BuildContext context,
+  ) async {
+    final theme = Theme.of(context);
+
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          '¿Limpiar buzón? 🧹',
+          style: TextStyle(color: theme.primaryColor),
+        ),
+        content: const Text(
+          'Se eliminarán todas tus notificaciones. Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Borrar Todo',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final batch = FirebaseFirestore.instance.batch();
+      final allDocs = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('notifications')
+          .get();
+
+      for (var doc in allDocs.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+    }
+  }
+
   Future<void> _navigateToTask(
     BuildContext context,
     Map<String, dynamic> data,
@@ -49,7 +123,6 @@ class NotificationsScreen extends StatelessWidget {
     }
 
     try {
-      // 1. Buscamos el documento del Grupo
       final groupDoc = await FirebaseFirestore.instance
           .collection('groups')
           .doc(groupId)
@@ -57,7 +130,6 @@ class NotificationsScreen extends StatelessWidget {
       if (!groupDoc.exists) throw Exception("El grupo ya no existe.");
       final group = GroupModel.fromMap(groupDoc.data()!, groupDoc.id);
 
-      // 2. Buscamos el documento de la Tarea
       final taskDoc = await FirebaseFirestore.instance
           .collection('tasks')
           .doc(taskId)
@@ -65,7 +137,6 @@ class NotificationsScreen extends StatelessWidget {
       if (!taskDoc.exists) throw Exception("Esta tarea ya fue eliminada.");
       final task = TaskModel.fromMap(taskDoc.data()!, taskDoc.id);
 
-      // 3. Viajamos a la pantalla de detalles
       if (context.mounted) {
         Navigator.push(
           context,
@@ -87,7 +158,6 @@ class NotificationsScreen extends StatelessWidget {
     }
   }
 
-  // Función para elegir el ícono dependiendo del tipo de notificación
   IconData _getIconForType(String? type) {
     switch (type) {
       case 'mention':
@@ -124,6 +194,19 @@ class NotificationsScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: IconThemeData(color: theme.primaryColor),
+        // --- NUEVO: BOTONES SUPERIORES ---
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
+            tooltip: 'Borrar todas',
+            onPressed: () => _deleteAllNotifications(currentUserId, context),
+          ),
+          IconButton(
+            icon: Icon(Icons.done_all, color: theme.primaryColor),
+            tooltip: 'Marcar todas como leídas',
+            onPressed: () => _markAllAsRead(currentUserId, context),
+          ),
+        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -157,7 +240,7 @@ class NotificationsScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 18, color: theme.primaryColor),
                   ),
                   Text(
-                    'Aquí aparecerán tus menciones',
+                    'Aquí aparecerán tus alertas',
                     style: TextStyle(color: theme.textTheme.bodyMedium?.color),
                   ),
                 ],
@@ -186,9 +269,8 @@ class NotificationsScreen extends StatelessWidget {
                     color: colorScheme.onErrorContainer,
                   ),
                 ),
-                onDismissed: (direction) {
-                  _deleteNotification(doc.id, currentUserId);
-                },
+                onDismissed: (direction) =>
+                    _deleteNotification(doc.id, currentUserId),
                 child: Card(
                   elevation: 0,
                   color: isRead
@@ -207,7 +289,6 @@ class NotificationsScreen extends StatelessWidget {
                   child: ListTile(
                     leading: CircleAvatar(
                       backgroundColor: colorScheme.secondaryContainer,
-                      // Usamos el icono que toque según el tipo de alerta
                       child: Icon(
                         _getIconForType(type),
                         color: colorScheme.onSecondaryContainer,
@@ -227,12 +308,9 @@ class NotificationsScreen extends StatelessWidget {
                       style: TextStyle(color: theme.textTheme.bodyLarge?.color),
                     ),
                     onTap: () {
-                      // 1. Marcamos como leída para que se quite el fondo amarillo
                       _markAsRead(doc.id, currentUserId);
-                      // 2. ¡VIAJAMOS A LA TAREA! 🚀
-                      if (data['taskId'] != null) {
+                      if (data['taskId'] != null)
                         _navigateToTask(context, data);
-                      }
                     },
                   ),
                 ),

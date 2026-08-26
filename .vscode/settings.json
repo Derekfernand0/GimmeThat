@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "C:/fluttershy/gimme that/gimmethat/linux"
+    "cmake.sourceDirectory": "C:/fluttershy/gimme that/gimmethat/linux",
+    "java.configuration.updateBuildConfiguration": "interactive"
 }
