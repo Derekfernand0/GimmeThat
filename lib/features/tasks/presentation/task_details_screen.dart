@@ -356,6 +356,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     );
   }
 
+  // Busca esta función en lib/features/tasks/presentation/task_details_screen.dart
   Future<void> _pickAndUploadImage() async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
@@ -364,9 +365,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     if (pickedFile == null) return;
 
     setState(() => _isUploadingImage = true);
-    String? downloadUrl = await _storageService.uploadTaskImage(
+
+    // Usamos la nueva función basada en XFile
+    String? downloadUrl = await _storageService.uploadTaskImageXFile(
       widget.task.id,
-      File(pickedFile.path),
+      pickedFile,
     );
 
     if (downloadUrl != null) {
@@ -377,7 +380,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error al subir la imagen 😔')),
+          const SnackBar(content: Text('Error al subir la imagen')),
         );
       }
     }
